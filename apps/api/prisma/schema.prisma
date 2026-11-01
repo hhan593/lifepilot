@@ -46,6 +46,7 @@ model User {
   waterLogs         WaterLog[]
   cities            City[]
   pushSubscriptions PushSubscription[]
+  expoPushTokens    ExpoPushToken[]
   refreshTokens     RefreshToken[]
   weeklyReports     WeeklyReport[]
 }
@@ -157,6 +158,17 @@ model PushSubscription {
   auth      String
   userAgent String?
   createdAt DateTime @default(now())
+}
+
+/** 原生 App（Expo）的远程推送令牌，用于服务端推送周报等 */
+model ExpoPushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 model WeeklyReport {

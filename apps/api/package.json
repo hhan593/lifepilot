@@ -8,13 +8,10 @@
     "start": "node dist/main.js",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",
-    "db:migrate": "prisma migrate dev",
-    "db:deploy": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:migrate": "cd ../.. && set -a && . ./.env && set +a && apps/api/node_modules/.bin/prisma migrate dev --schema apps/api/prisma/schema.prisma",
+    "db:deploy": "cd ../.. && set -a && . ./.env && set +a && apps/api/node_modules/.bin/prisma migrate deploy --schema apps/api/prisma/schema.prisma",
+    "db:seed": "cd ../.. && set -a && . ./.env && set +a && apps/api/node_modules/.bin/tsx apps/api/prisma/seed.ts",
     "generate:vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY='+k.publicKey);console.log('VAPID_PRIVATE_KEY='+k.privateKey)\""
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@lifepilot/shared": "workspace:*",

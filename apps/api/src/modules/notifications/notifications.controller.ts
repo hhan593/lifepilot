@@ -20,6 +20,11 @@ class UnsubscribeDto {
   endpoint!: string;
 }
 
+class ExpoTokenDto {
+  @IsString()
+  token!: string;
+}
+
 @ApiBearerAuth()
 @ApiTags('notifications')
 @Controller('notifications')
@@ -49,6 +54,17 @@ export class NotificationsController {
   @Post('subscriptions/unsubscribe')
   unsubscribe(@Body() dto: UnsubscribeDto) {
     return this.notificationsService.removeSubscription(dto.endpoint);
+  }
+
+  /** 原生 App（Expo）登录后注册远程推送令牌 */
+  @Post('expo-token')
+  registerExpoToken(@CurrentUser() user: AuthUser, @Body() dto: ExpoTokenDto) {
+    return this.notificationsService.upsertExpoToken(user.id, dto.token);
+  }
+
+  @Post('expo-token/remove')
+  removeExpoToken(@Body() dto: ExpoTokenDto) {
+    return this.notificationsService.removeExpoToken(dto.token);
   }
 
   /** 测试推送：验证订阅链路是否打通 */

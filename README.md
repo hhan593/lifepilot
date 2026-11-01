@@ -3,8 +3,33 @@
 天气 + 待办 + 喝水打卡 + 习惯养成 + 自动周报，一个入口全搞定。
 
 - 后端：NestJS 11 + Prisma + PostgreSQL 17 + Redis 8（BullMQ 定时提醒）
-- 前端：Next.js 15 (App Router) + Tailwind CSS v4 + TanStack Query，可安装 PWA
+- 移动端（主力）：**Expo SDK 58 / React Native 0.88** + NativeWind 5（Tailwind v4）+ TanStack Query，iOS/Android 双端
+- Web 端：Next.js 15 (App Router) + Tailwind CSS v4 + TanStack Query，可安装 PWA（桌面仪表盘）
 - 天气：[Open-Meteo](https://open-meteo.com)（免费、无 key；Provider 适配层可热切和风天气）
+
+## 移动端 App
+
+```bash
+# 开发：iOS 模拟器 / Android 模拟器（需 Xcode 或 Android Studio）
+pnpm --filter @lifepilot/mobile ios     # 或 android
+# 真机：同一局域网内，把 apps/mobile/.env 的
+# EXPO_PUBLIC_API_BASE 改成 http://<Mac局域网IP>:4000/api/v1 后扫码
+
+# 打包可安装的正式包（需要 Expo 账号）
+cd apps/mobile && npx eas build --platform ios
+```
+
+- 认证令牌存 `expo-secure-store`（iOS Keychain / Android Keystore），刷新令牌走请求体旋转
+- 喝水提醒 = 设备**本地通知**（离线生效，expo-notifications 按用户时间点每日调度）
+- 周报完成 = 服务端经 Expo Push 推送；令牌登录后自动注册（正式包需在 app.json 配 EAS projectId）
+- 图标用系统 emoji（SF Symbols 图标可在引入 `expo-symbols` 后替换；`@expo/vector-icons` 在 Expo Go + RN 0.88 下存在 AssetRegistry 兼容问题）
+
+### monorepo 注意事项（踩坑记录）
+
+- pnpm 11：`nodeLinker: hoisted` 必须写在 `pnpm-workspace.yaml`（.npmrc 已无效）；Expo/Metro 在 pnpm 符号链接布局下无法正常工作
+- 全仓锁版本（见 workspace overrides）：`react`/`react-dom` 19.3.1（Expo 模板 19.3.0 与 Next 的 react-dom peer 冲突）、`typescript` 5.9.3（mobile 模板的 TS 6 会判 API 的 tsconfig 为错误）、`@babel/core` 7.29.7、`lightningcss` 1.30.1（1.32 与 react-native-css 有反序列化不兼容）
+- NativeWind 5 = `react-native-css`（Metro 层 CSS）+ `@tailwindcss/postcss`（Tailwind v4）；不需要 babel 插件
+
 
 ## 快速开始
 
@@ -23,17 +48,20 @@ cp .env.example .env
 pnpm db:migrate
 pnpm db:seed
 
-# 4. 启动（api:4000 + web:3000）
+# 4. 启动 api + web
 pnpm dev
+# 5. 移动端（另开终端）
+pnpm --filter @lifepilot/mobile ios
 ```
 
-打开 http://localhost:3000 ，演示账号 `demo@lifepilot.app / Demo1234!`，API 文档在 http://localhost:4000/docs 。
+打开 http://localhost:3000 或 iOS 模拟器里的 LifePilot，演示账号 `demo@lifepilot.app / Demo1234!`，API 文档在 http://localhost:4000/docs 。
 
 ## 常用命令
 
 | 命令 | 说明 |
 | --- | --- |
 | `pnpm dev` | 并行启动 api（watch）与 web |
+| `pnpm --filter @lifepilot/mobile ios` | Expo 启动 + iOS 模拟器 |
 | `pnpm build` / `pnpm test` | 构建 / 单元测试 |
 | `pnpm test:e2e` | API 全链路 e2e（需本地 pg + redis） |
 | `pnpm db:migrate` / `pnpm db:seed` | 迁移 / 演示数据 |
@@ -44,8 +72,9 @@ pnpm dev
 apps/api     NestJS 模块化单体
   modules/   auth users todos water habits cities weather reports notifications scheduler health
   prisma/    schema + migrations + seed
-apps/web     Next.js App Router（/app 为登录后主界面，移动优先 + 底部导航）
-packages/shared  前后端共享类型、WMO 天气码表、饮水目标公式、饮品折算系数
+apps/mobile  Expo / React Native 原生 App（expo-router 文件路由 + 底部 Tab）
+apps/web     Next.js App Router（/app 为登录后主界面，桌面仪表盘）
+packages/shared  三端共享类型、WMO 天气码表、饮水目标公式、饮品折算系数
 ```
 
 关键设计：
