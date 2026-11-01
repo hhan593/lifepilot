@@ -1,0 +1,13 @@
+{
+  "name": "LifePilot · 生活驾驶舱",
+  "short_name": "LifePilot",
+  "description": "天气、待办、喝水打卡、习惯养成、自动周报",
+  "start_url": "/app",
+  "display": "standalone",
+  "background_color": "#fafafa",
+  "theme_color": "#4f46e5",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

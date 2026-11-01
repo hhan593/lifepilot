@@ -1,0 +1,55 @@
+# 本地开发用 Homebrew 服务即可（postgresql@17 / redis）。
+# 此文件用于生产部署或无 Homebrew 环境。
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lifepilot
+      POSTGRES_PASSWORD: lifepilot
+      POSTGRES_DB: lifepilot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lifepilot"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+
+  api:
+    build: ./apps/api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://lifepilot:lifepilot@postgres:5432/lifepilot
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+      NODE_ENV: production
+      PORT: 4000
+    ports:
+      - "4000:4000"
+
+  web:
+    build: ./apps/web
+    depends_on:
+      - api
+    environment:
+      API_ORIGIN: http://api:4000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  redisdata:

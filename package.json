@@ -1,0 +1,21 @@
+{
+  "name": "lifepilot",
+  "private": true,
+  "packageManager": "pnpm@11.8.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "dev:api": "pnpm --filter @lifepilot/api dev",
+    "dev:web": "pnpm --filter @lifepilot/web dev",
+    "build": "pnpm -r build",
+    "test": "pnpm --filter @lifepilot/api test",
+    "test:e2e": "pnpm --filter @lifepilot/api test:e2e",
+    "db:migrate": "pnpm --filter @lifepilot/api db:migrate",
+    "db:seed": "pnpm --filter @lifepilot/api db:seed"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3"
+  }
+}

@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TodoPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum DrinkType {
+  WATER
+  TEA
+  COFFEE
+  JUICE
+  MILK
+  SODA
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  timezone     String   @default("Asia/Shanghai")
+  locale       String   @default("zh-CN")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  settings          UserSettings?
+  todos             Todo[]
+  habits            Habit[]
+  waterLogs         WaterLog[]
+  cities            City[]
+  pushSubscriptions PushSubscription[]
+  refreshTokens     RefreshToken[]
+  weeklyReports     WeeklyReport[]
+}
+
+model UserSettings {
+  id                   String        @id @default(cuid())
+  userId               String        @unique
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg             Float?
+  activityLevel        ActivityLevel @default(LIGHT)
+  waterGoalMl          Int           @default(2000)
+  cupSizeMl            Int           @default(250)
+  waterReminderEnabled Boolean       @default(true)
+  waterReminderTimes   String[]      @default(["10:00", "12:30", "15:00", "18:00", "21:00"])
+  quietStart           String        @default("22:00")
+  quietEnd             String        @default("08:00")
+  weeklyReportDay      Int           @default(5)
+  weeklyReportHour     Int           @default(17)
+  aiWeeklyReport       Boolean       @default(false)
+  updatedAt            DateTime      @updatedAt
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model Todo {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  notes       String?
+  priority    TodoPriority @default(MEDIUM)
+  dueAt       DateTime?
+  completedAt DateTime?
+  sortIndex   Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([userId, completedAt])
+  @@index([userId, dueAt])
+}
+
+model Habit {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  icon          String   @default("✅")
+  color         String   @default("#6366f1")
+  targetPerWeek Int      @default(7)
+  archived      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  checkIns HabitCheckIn[]
+
+  @@index([userId])
+}
+
+model HabitCheckIn {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      String
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+  @@index([date])
+}
+
+model WaterLog {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountMl  Int
+  drinkType DrinkType @default(WATER)
+  loggedAt  DateTime  @default(now())
+
+  @@index([userId, loggedAt])
+}
+
+model City {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  latitude  Float
+  longitude Float
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+}
+
+model WeeklyReport {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart   String
+  payload     Json
+  generatedAt DateTime @default(now())
+  viewedAt    DateTime?
+
+  @@unique([userId, weekStart])
+}
+
+model WeatherCache {
+  key       String   @id
+  payload   Json
+  fetchedAt DateTime
+}
