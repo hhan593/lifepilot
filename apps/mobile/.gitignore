@@ -39,5 +39,5 @@ yarn-error.*
 example
 
 # generated native folders
+# android/ 已入库（GitHub Actions 直接用提交的原生工程构建，保证签名一致）
 /ios
-/android

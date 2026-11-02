@@ -9,5 +9,10 @@ coverage/
 npm-debug.log*
 .pnpm-store/
 .expo/
+# Android 原生工程入库（保证签名与 CNG 一致），仅忽略构建产物
+android/build/
+android/.gradle/
+android/app/build/
+android/app/.cxx/
+android/local.properties
 ios/
-android/
