@@ -67,6 +67,15 @@ export function tryRefresh(): Promise<boolean> {
   return refreshing;
 }
 
+/** 会话失效（刷新也失败）时通知订阅者（auth store → 跳回登录页） */
+type SessionExpiredListener = () => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+export function onSessionExpired(cb: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(cb);
+  return () => sessionExpiredListeners.delete(cb);
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const doFetch = () =>
     fetch(`${BASE}${path}`, {
@@ -81,7 +90,15 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   let res = await doFetch();
   if (res.status === 401 && !path.startsWith('/auth/')) {
     const ok = await tryRefresh();
-    if (ok) res = await doFetch();
+    if (ok) {
+      res = await doFetch();
+    } else {
+      // 刷新令牌也失效：清除会话并通知跳转登录
+      accessToken = null;
+      await safeDeleteItem(ACCESS_KEY);
+      await safeDeleteItem(REFRESH_KEY);
+      sessionExpiredListeners.forEach((cb) => cb());
+    }
   }
 
   if (!res.ok) {

@@ -80,6 +80,7 @@ export default function TodayScreen() {
   const todayTodos = todos.data ?? [];
   const w = water.data;
   const rep = report.data;
+  const hasError = Boolean(todos.error || water.error || habits.error);
 
   return (
     <ScrollView
@@ -95,6 +96,19 @@ export default function TodayScreen() {
       </Text>
 
       <View className="mt-4 gap-4">
+        {hasError ? (
+          <View className="rounded-2xl border border-red-100 bg-red-50 p-4">
+            <Text className="text-sm font-medium text-red-700">部分数据加载失败</Text>
+            <Text className="mt-0.5 text-xs text-red-500">请检查网络连接，或稍后重试</Text>
+            <Pressable
+              className="mt-2.5 self-start rounded-xl bg-red-600 px-3.5 py-1.5 active:opacity-80"
+              onPress={onRefresh}
+            >
+              <Text className="text-xs font-semibold text-white">重试</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* 生活周报快捷入口卡片 */}
         <Pressable
           onPress={() => router.push('/reports')}

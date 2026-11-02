@@ -1,11 +1,16 @@
 import { create } from 'zustand';
-import { api, bootstrapSession, getRefreshToken, post, setTokens } from './api';
+import { api, bootstrapSession, getRefreshToken, onSessionExpired, post, setTokens } from './api';
 
 export interface UserSummary {
   id: string;
   email: string;
   timezone: string;
 }
+
+// 会话中途失效（刷新令牌也过期）→ 自动回到登录态，AuthGate 会跳转 /login
+onSessionExpired(() => {
+  useAuthStore.setState({ status: 'guest', user: null });
+});
 
 interface AuthState {
   status: 'loading' | 'authed' | 'guest';
