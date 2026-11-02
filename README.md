@@ -24,6 +24,32 @@ cd apps/mobile && pnpm exec expo export --platform ios|android|web
 cd apps/mobile && npx eas build --platform ios
 ```
 
+## 发包（GitHub 全链路，iOS 除外）
+
+仓库已配 `.github/workflows/release.yml`，**打 tag 即发包**：
+
+```bash
+git tag v0.1.0 && git push origin v0.1.0
+```
+
+Actions 会自动完成三件事并挂到 [Releases](https://github.com/hhan593/lifepilot/releases)：
+
+1. **Android APK**（自签名 release 包，`android/app/lifepilot-release.keystore` 随私有仓库入库；CI 上若无密钥自动回退 debug 签名——仅供测试，升级安装需同一密钥）
+2. **H5 静态包**（`h5-dist.tar.gz`，含 SPA 404 回退）
+3. **GitHub Pages 部署**（`https://hhan593.github.io/lifepilot/`，CI 注入 `EXPO_PUBLIC_BASE_URL` 子路径）
+
+本地手动出 APK：
+
+```bash
+cd apps/mobile/android && JAVA_HOME=<JDK17+> ./gradlew assembleRelease
+# 产物：android/app/build/outputs/apk/release/app-release.apk
+```
+
+注意事项：
+- **私有仓库 + 免费套餐跑不了 GitHub Pages**（Actions 可以跑，每月 2000 分钟免费额度）；Pages 需把仓库改为 public 或升级 Pro：`gh repo edit --visibility public`
+- H5 部署地址记得在 App 的 `.env`/服务端把 API 地址换成公网可达地址
+- iOS 正式包必须走 Apple Developer 账号（TestFlight/App Store），GitHub 无法绕过签名
+
 - **三端兼容层**（`src/lib/`）：令牌存储 `storage.ts`（原生 Keychain/Keystore，H5 降级 localStorage）；`notifications.ts` / `haptics.ts` 无 web 入口的包按 `Platform.OS` 懒加载，H5 自动降级
 - **CORS**：H5 跑在 8081 端口，需在根 `.env` 的 `WEB_ORIGIN` 里包含 `http://localhost:8081`
 - 喝水提醒 = 设备**本地通知**（iOS/Android，离线生效）；H5 提醒由 Web Push 渠道承担
