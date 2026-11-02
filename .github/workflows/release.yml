@@ -35,8 +35,17 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @lifepilot/shared build
 
-      # android/ 原生工程随仓库提交（expo prebuild 已本地生成），
-      # 签名密钥 apps/mobile/android/app/lifepilot-release.keystore 一并入库（私有仓库）
+      # android/ 原生工程随仓库提交（expo prebuild 已本地生成）；
+      # 签名密钥从 GitHub Secret 解出，不入库
+      - name: Restore release keystore
+        working-directory: apps/mobile/android/app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.LIFEPILOT_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > lifepilot-release.keystore
+          fi
+
       - name: Build release APK
         working-directory: apps/mobile/android
         run: ./gradlew assembleRelease --no-daemon
@@ -86,7 +95,8 @@ jobs:
           generate_release_notes: true
 
   deploy-pages:
-    if: github.ref_type == 'tag'
+    # Pages 仅 public 仓库（或付费套餐）可用；私有仓库下自动跳过
+    if: github.ref_type == 'tag' && github.event.repository.visibility == 'public'
     runs-on: ubuntu-latest
     needs: h5
     environment:

@@ -16,3 +16,6 @@ android/app/build/
 android/app/.cxx/
 android/local.properties
 ios/
+
+# 签名密钥不入库（CI 从 GitHub Secret 解出）
+apps/mobile/android/app/lifepilot-release.keystore
