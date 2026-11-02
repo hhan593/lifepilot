@@ -1,28 +1,54 @@
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import * as Device from 'expo-device';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+type NotificationsModule = typeof import('expo-notifications');
+
+let cachedModule: NotificationsModule | null = null;
+
+/** expo-notifications 无 web 入口：仅在原生端动态加载，H5 返回 null */
+async function getNotifications(): Promise<NotificationsModule | null> {
+  if (Platform.OS === 'web') return null;
+  if (!cachedModule) cachedModule = await import('expo-notifications');
+  return cachedModule;
+}
+
+// 前台展示配置（仅原生端）
+void (async () => {
+  const Notifications = await getNotifications();
+  Notifications?.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+})();
 
 export async function ensureNotificationPermission(): Promise<boolean> {
-  if (!Device.isDevice) {
-    // 模拟器上 iOS 也允许本地通知，这里照常请求
+  if (Platform.OS === 'web') {
+    if (typeof Notification === 'undefined') return false;
+    if (Notification.permission === 'granted') return true;
+    const req = await Notification.requestPermission();
+    return req === 'granted';
   }
+  const Notifications = await getNotifications();
+  if (!Notifications) return false;
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return true;
   const req = await Notifications.requestPermissionsAsync();
   return req.granted;
 }
 
-/** 喝水提醒走本地通知：按用户配置的每日时间点在设备上重复调度（离线也生效） */
+/**
+ * 喝水提醒：
+ * - iOS/Android → 本地通知按每日时间点重复调度（离线也生效）
+ * - H5/Web → 浏览器无可靠的定时本地通知，由 Web Push 渠道承担
+ */
 export async function syncWaterReminders(times: string[], enabled: boolean): Promise<number> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return 0;
+
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!enabled) return 0;
 
@@ -48,10 +74,13 @@ export async function syncWaterReminders(times: string[], enabled: boolean): Pro
 
 /**
  * 注册远程推送令牌（用于服务端推送周报）。
- * 注意：正式包需要 EAS projectId；Expo Go 开发环境下尽力而为，失败返回 null 不影响使用。
+ * 仅原生真机可用；H5 返回 null。正式包需要 EAS projectId。
  */
 export async function registerExpoPushToken(projectId?: string): Promise<string | null> {
   try {
+    if (Platform.OS === 'web') return null;
+    const Notifications = await getNotifications();
+    if (!Notifications) return null;
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: '默认',

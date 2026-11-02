@@ -160,11 +160,49 @@ export interface CityWeather {
 export interface WeeklyReportPayload {
   weekStart: string;
   weekEnd: string;
-  todos: { created: number; completed: number; open: number; completionRate: number };
-  water: { goalMl: number; avgMlPerDay: number; goalHitDays: number; dailyMl: number[] };
-  habits: { id: string; name: string; icon: string; targetPerWeek: number; done: number; achieved: boolean }[];
+  score: number;
+  grade: "S" | "A" | "B" | "C";
+  title: string;
+  personaSummary: string;
+  todos: {
+    created: number;
+    completed: number;
+    open: number;
+    completionRate: number;
+    dailyCompleted: number[];
+    topCompleted: { id: string; title: string; priority: TodoPriority }[];
+  };
+  water: {
+    goalMl: number;
+    avgMlPerDay: number;
+    goalHitDays: number;
+    dailyMl: number[];
+    bestDayIndex: number;
+    drinkBreakdown: { type: DrinkType; amountMl: number; percentage: number }[];
+  };
+  habits: {
+    id: string;
+    name: string;
+    icon: string;
+    color: string;
+    targetPerWeek: number;
+    done: number;
+    achieved: boolean;
+    dailyStatus: boolean[];
+  }[];
   highlights: string[];
+  suggestions: string[];
   markdown: string;
+}
+
+export interface WeeklyReportSummary {
+  weekStart: string;
+  weekEnd: string;
+  score: number;
+  grade: "S" | "A" | "B" | "C";
+  title: string;
+  completionRate: number;
+  generatedAt: string;
 }
 
 // ---- Web Push 通知载荷 ----

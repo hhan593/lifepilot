@@ -3,11 +3,11 @@
 天气 + 待办 + 喝水打卡 + 习惯养成 + 自动周报，一个入口全搞定。
 
 - 后端：NestJS 11 + Prisma + PostgreSQL 17 + Redis 8（BullMQ 定时提醒）
-- 移动端（主力）：**Expo SDK 58 / React Native 0.88** + NativeWind 5（Tailwind v4）+ TanStack Query，iOS/Android 双端
+- 移动端（主力）：**Expo SDK 58 / React Native 0.88** + NativeWind 5（Tailwind v4）+ TanStack Query，**iOS / Android / H5 三端同源**
 - Web 端：Next.js 15 (App Router) + Tailwind CSS v4 + TanStack Query，可安装 PWA（桌面仪表盘）
 - 天气：[Open-Meteo](https://open-meteo.com)（免费、无 key；Provider 适配层可热切和风天气）
 
-## 移动端 App
+## 移动端 App（iOS / Android / H5）
 
 ```bash
 # 开发：iOS 模拟器 / Android 模拟器（需 Xcode 或 Android Studio）
@@ -15,12 +15,18 @@ pnpm --filter @lifepilot/mobile ios     # 或 android
 # 真机：同一局域网内，把 apps/mobile/.env 的
 # EXPO_PUBLIC_API_BASE 改成 http://<Mac局域网IP>:4000/api/v1 后扫码
 
+# H5：开发模式直接访问 http://localhost:8081/login
+pnpm --filter @lifepilot/mobile start
+# 三端静态产物（CI / 部署校验）：
+cd apps/mobile && pnpm exec expo export --platform ios|android|web
+
 # 打包可安装的正式包（需要 Expo 账号）
 cd apps/mobile && npx eas build --platform ios
 ```
 
-- 认证令牌存 `expo-secure-store`（iOS Keychain / Android Keystore），刷新令牌走请求体旋转
-- 喝水提醒 = 设备**本地通知**（离线生效，expo-notifications 按用户时间点每日调度）
+- **三端兼容层**（`src/lib/`）：令牌存储 `storage.ts`（原生 Keychain/Keystore，H5 降级 localStorage）；`notifications.ts` / `haptics.ts` 无 web 入口的包按 `Platform.OS` 懒加载，H5 自动降级
+- **CORS**：H5 跑在 8081 端口，需在根 `.env` 的 `WEB_ORIGIN` 里包含 `http://localhost:8081`
+- 喝水提醒 = 设备**本地通知**（iOS/Android，离线生效）；H5 提醒由 Web Push 渠道承担
 - 周报完成 = 服务端经 Expo Push 推送；令牌登录后自动注册（正式包需在 app.json 配 EAS projectId）
 - 图标用系统 emoji（SF Symbols 图标可在引入 `expo-symbols` 后替换；`@expo/vector-icons` 在 Expo Go + RN 0.88 下存在 AssetRegistry 兼容问题）
 

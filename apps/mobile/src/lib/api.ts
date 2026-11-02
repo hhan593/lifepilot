@@ -1,4 +1,4 @@
-import * as SecureStore from 'expo-secure-store';
+import { safeGetItem, safeSetItem, safeDeleteItem } from './storage';
 
 const BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:4000/api/v1';
 
@@ -25,28 +25,28 @@ export function getAccessToken(): string | null {
 
 export async function setTokens(access: string | null, refresh?: string | null) {
   accessToken = access;
-  if (access) await SecureStore.setItemAsync(ACCESS_KEY, access);
-  else await SecureStore.deleteItemAsync(ACCESS_KEY);
+  if (access) await safeSetItem(ACCESS_KEY, access);
+  else await safeDeleteItem(ACCESS_KEY);
   if (refresh !== undefined) {
-    if (refresh) await SecureStore.setItemAsync(REFRESH_KEY, refresh);
-    else await SecureStore.deleteItemAsync(REFRESH_KEY);
+    if (refresh) await safeSetItem(REFRESH_KEY, refresh);
+    else await safeDeleteItem(REFRESH_KEY);
   }
 }
 
 export async function getRefreshToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(REFRESH_KEY);
+  return safeGetItem(REFRESH_KEY);
 }
 
-/** 冷启动恢复会话：用 SecureStore 里的 refresh token 换新 access token（body 方式，原生端不走 Cookie） */
+/** 冷启动恢复会话：用存储的 refresh token 换新 access token（body 方式，原生端不走 Cookie） */
 export async function bootstrapSession(): Promise<boolean> {
-  const stored = await SecureStore.getItemAsync(ACCESS_KEY);
+  const stored = await safeGetItem(ACCESS_KEY);
   if (stored) accessToken = stored;
   return tryRefresh();
 }
 
 export function tryRefresh(): Promise<boolean> {
   refreshing ??= (async () => {
-    const refreshToken = await SecureStore.getItemAsync(REFRESH_KEY);
+    const refreshToken = await safeGetItem(REFRESH_KEY);
     if (!refreshToken) return false;
     try {
       const res = await fetch(`${BASE}/auth/refresh`, {

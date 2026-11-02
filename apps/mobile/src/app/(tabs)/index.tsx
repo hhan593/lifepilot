@@ -1,18 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { api, post } from '@/lib/api';
+import { hapticLight, hapticSuccess } from '@/lib/haptics';
 import { WeatherCard } from '@/components/weather-card';
 import { WaterRing } from '@/components/water-ring';
 import { TodoItem } from '@/components/todo-item';
-import type { CityWeather } from '@lifepilot/shared';
+import type { CityWeather, WeeklyReportPayload } from '@lifepilot/shared';
 import type { HabitWithStatus, TodoData, WaterSummary } from '@/lib/types';
 
 export default function TodayScreen() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [newTodo, setNewTodo] = useState('');
+
 
   const weather = useQuery({
     queryKey: ['weather'],
@@ -33,6 +37,10 @@ export default function TodayScreen() {
     queryKey: ['habits'],
     queryFn: () => api<HabitWithStatus[]>('/habits'),
   });
+  const report = useQuery({
+    queryKey: ['reports', 'latest'],
+    queryFn: () => api<WeeklyReportPayload>('/reports/weekly').catch(() => null),
+  });
 
   const addTodo = useMutation({
     mutationFn: (title: string) => post('/todos', { title }),
@@ -47,13 +55,23 @@ export default function TodayScreen() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['todos'] }),
   });
   const quickWater = useMutation({
-    mutationFn: (amountMl: number) => post('/water/logs', { amountMl }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['water'] }),
+    mutationFn: (amountMl: number) => post<{ summary: WaterSummary }>('/water/logs', { amountMl }),
+    onSuccess: (res) => {
+      void queryClient.invalidateQueries({ queryKey: ['water'] });
+      void (res.summary.hydrationMl >= res.summary.goalMl ? hapticSuccess() : hapticLight());
+    },
   });
   const toggleHabit = useMutation({
-    mutationFn: (id: string) => post(`/habits/${id}/check-ins`),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['habits'] }),
+    mutationFn: (input: { id: string; wasChecked: boolean }) => post(`/habits/${input.id}/check-ins`),
+    onSuccess: (_res, input) => {
+      void queryClient.invalidateQueries({ queryKey: ['habits'] });
+      void (input.wasChecked ? hapticLight() : hapticSuccess());
+    },
   });
+
+  const refreshing =
+    weather.isRefetching || todos.isRefetching || water.isRefetching || habits.isRefetching;
+  const onRefresh = () => void queryClient.invalidateQueries();
 
   const now = new Date();
   const hour = now.getHours();
@@ -61,15 +79,43 @@ export default function TodayScreen() {
   const dateLabel = `${now.getMonth() + 1}月${now.getDate()}日 星期${'日一二三四五六'[now.getDay()]}`;
   const todayTodos = todos.data ?? [];
   const w = water.data;
+  const rep = report.data;
 
   return (
-    <ScrollView className="flex-1 px-4 pt-14" contentContainerStyle={{ paddingBottom: 32 }}>
+    <ScrollView
+      className="flex-1 px-4"
+      contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: 32 }}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4f46e5" />
+      }
+    >
       <Text className="text-xl font-bold text-zinc-900">
         {greeting}
         <Text className="ml-2 text-sm font-normal text-zinc-400"> {dateLabel}</Text>
       </Text>
 
       <View className="mt-4 gap-4">
+        {/* 生活周报快捷入口卡片 */}
+        <Pressable
+          onPress={() => router.push('/reports')}
+          className="relative overflow-hidden rounded-2xl bg-zinc-900 p-4 shadow-md active:bg-zinc-800"
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2">
+              <Text className="text-xl">🧭</Text>
+              <View>
+                <Text className="text-sm font-bold text-white">个人生活驾驶舱 · 周报</Text>
+                <Text className="text-xs text-zinc-400">
+                  {rep ? `生活活力指数 ${rep.score} 分 · ${rep.grade} 级 ${rep.title}` : '点击查看本周成长与习惯复盘'}
+                </Text>
+              </View>
+            </View>
+            <View className="rounded-xl bg-indigo-600 px-3 py-1.5">
+              <Text className="text-xs font-bold text-white">查看周报 →</Text>
+            </View>
+          </View>
+        </Pressable>
+
         {weather.data !== undefined ? <WeatherCard data={weather.data} /> : null}
 
         <View className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm">
@@ -98,7 +144,10 @@ export default function TodayScreen() {
               <TodoItem
                 key={t.id}
                 todo={t}
-                onToggle={(todo, completed) => toggleTodo.mutate({ id: todo.id, completed })}
+                onToggle={(todo, completed) => {
+                  void (completed ? hapticSuccess() : hapticLight());
+                  toggleTodo.mutate({ id: todo.id, completed });
+                }}
               />
             ))}
             {todayTodos.length === 0 ? (
@@ -123,13 +172,13 @@ export default function TodayScreen() {
                 {w.remainingMl > 0 ? `还差 ${w.remainingMl.toLocaleString()}ml 达标` : '今日已达标，棒！🎉'}
               </Text>
               <View className="mt-3 flex-row gap-2">
-                <Pressable className="rounded-xl border border-zinc-200 px-3 py-1.5" onPress={() => quickWater.mutate(250)}>
+                <Pressable className="rounded-xl border border-zinc-200 px-3 py-1.5 active:opacity-70" onPress={() => quickWater.mutate(250)}>
                   <Text className="text-xs text-zinc-700">+250ml</Text>
                 </Pressable>
-                <Pressable className="rounded-xl border border-zinc-200 px-3 py-1.5" onPress={() => quickWater.mutate(500)}>
+                <Pressable className="rounded-xl border border-zinc-200 px-3 py-1.5 active:opacity-70" onPress={() => quickWater.mutate(500)}>
                   <Text className="text-xs text-zinc-700">+500ml</Text>
                 </Pressable>
-                <Pressable className="rounded-xl bg-brand-600 px-3 py-1.5" onPress={() => quickWater.mutate(250)}>
+                <Pressable className="rounded-xl bg-brand-600 px-3 py-1.5 active:opacity-80" onPress={() => quickWater.mutate(250)}>
                   <Text className="text-xs font-semibold text-white">记一杯</Text>
                 </Pressable>
               </View>
@@ -151,7 +200,7 @@ export default function TodayScreen() {
                 <Pressable
                   key={h.id}
                   className="w-[47%] flex-1 items-center rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm"
-                  onPress={() => toggleHabit.mutate(h.id)}
+                  onPress={() => toggleHabit.mutate({ id: h.id, wasChecked: h.todayChecked })}
                 >
                   <Text className="text-3xl">{h.icon}</Text>
                   <Text numberOfLines={1} className="mt-1.5 text-xs font-medium text-zinc-900">

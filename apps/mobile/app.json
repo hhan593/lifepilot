@@ -41,6 +41,10 @@
     "experiments": {
       "typedRoutes": true
     },
-    "description": "天气、待办、喝水打卡、习惯养成、自动周报"
+    "description": "天气、待办、喝水打卡、习惯养成、自动周报",
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    }
   }
 }

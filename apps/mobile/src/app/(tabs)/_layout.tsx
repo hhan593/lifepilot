@@ -28,7 +28,7 @@ export default function TabsLayout() {
           name={t.name}
           options={{
             title: t.title,
-            tabBarIcon: ({ focused, color }) => (
+            tabBarIcon: ({ focused }) => (
               <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>{t.icon}</Text>
             ),
           }}
