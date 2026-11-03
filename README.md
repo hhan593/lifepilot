@@ -34,13 +34,16 @@ git tag v0.1.0 && git push origin v0.1.0
 
 Actions 会自动完成三件事并挂到 [Releases](https://github.com/hhan593/lifepilot/releases)：
 
-1. **Android APK**（自签名 release 包，`android/app/lifepilot-release.keystore` 随私有仓库入库；CI 上若无密钥自动回退 debug 签名——仅供测试，升级安装需同一密钥）
+1. **Android APK**（自签名 release 包。keystore 与签名密码均经 GitHub Secret 注入：`LIFEPILOT_KEYSTORE_BASE64` / `LIFEPILOT_UPLOAD_STORE_PASSWORD` / `LIFEPILOT_UPLOAD_KEY_PASSWORD`，**不入库**；缺任一 Secret 时构建直接失败，不会回退 debug 签名）
 2. **H5 静态包**（`h5-dist.tar.gz`，含 SPA 404 回退）
 3. **GitHub Pages 部署**（`https://hhan593.github.io/lifepilot/`，CI 注入 `EXPO_PUBLIC_BASE_URL` 子路径）
 
 本地手动出 APK：
 
 ```bash
+# keystore 放 android/app/lifepilot-release.keystore（已在 .gitignore）；
+# 密码写入 android/gradle.properties（同样不入库）：
+#   LIFEPILOT_UPLOAD_STORE_PASSWORD=... / LIFEPILOT_UPLOAD_KEY_PASSWORD=...
 cd apps/mobile/android && JAVA_HOME=<JDK17+> ./gradlew assembleRelease
 # 产物：android/app/build/outputs/apk/release/app-release.apk
 ```

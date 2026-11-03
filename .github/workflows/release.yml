@@ -44,9 +44,15 @@ jobs:
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > lifepilot-release.keystore
           fi
+          # 缺密钥必须失败：静默回退会发布 debug 签名的"正式"APK（与既有安装不兼容且无法升级）
+          [ -f lifepilot-release.keystore ] || { echo "::error::缺少签名密钥 Secret LIFEPILOT_KEYSTORE_BASE64"; exit 1; }
 
       - name: Build release APK
         working-directory: apps/mobile/android
+        env:
+          # 签名密码不再有代码内默认值（#11），必须经 Secret 注入
+          LIFEPILOT_UPLOAD_STORE_PASSWORD: ${{ secrets.LIFEPILOT_UPLOAD_STORE_PASSWORD }}
+          LIFEPILOT_UPLOAD_KEY_PASSWORD: ${{ secrets.LIFEPILOT_UPLOAD_KEY_PASSWORD }}
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK to Release

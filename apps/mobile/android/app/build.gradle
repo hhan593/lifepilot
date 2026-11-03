@@ -108,10 +108,16 @@ android {
         release {
             def ksFile = file('lifepilot-release.keystore')
             if (ksFile.exists()) {
+                // 密码必须显式注入（CI Secret / 本地 gradle.properties），不再有代码内默认值
+                def storePass = findProperty('LIFEPILOT_UPLOAD_STORE_PASSWORD')
+                def keyPass = findProperty('LIFEPILOT_UPLOAD_KEY_PASSWORD')
+                if (storePass == null || keyPass == null) {
+                    throw new GradleException("缺少 LIFEPILOT_UPLOAD_STORE_PASSWORD / LIFEPILOT_UPLOAD_KEY_PASSWORD（CI 经 Secret 注入，本地放 gradle.properties）")
+                }
                 storeFile ksFile
-                storePassword findProperty('LIFEPILOT_UPLOAD_STORE_PASSWORD') ?: 'lifepilot2026'
+                storePassword storePass
                 keyAlias 'lifepilot'
-                keyPassword findProperty('LIFEPILOT_UPLOAD_KEY_PASSWORD') ?: 'lifepilot2026'
+                keyPassword keyPass
             } else {
                 storeFile file('debug.keystore')
                 storePassword 'android'
