@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack, usePathname, useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuthStore } from '@/lib/auth';
-import { registerExpoPushToken } from '@/lib/notifications';
+import { registerExpoPushToken, rememberExpoToken } from '@/lib/notifications';
 import { post } from '@/lib/api';
 import '../global.css';
 
@@ -24,6 +24,19 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     void bootstrap();
   }, [bootstrap]);
 
+  // 推送令牌注册独立于路由跳转：冷启动恢复会话（pathname 已是 /）时也要注册，
+  // 只在登录后执行一次（原逻辑挂在"从登录页跳走"分支上，存量用户永远注册不上）
+  const pushRegisteredRef = useRef(false);
+  useEffect(() => {
+    if (status !== 'authed' || pushRegisteredRef.current) return;
+    pushRegisteredRef.current = true;
+    // 尽力注册远程推送令牌（周报推送用），失败静默
+    void registerExpoPushToken(process.env.EXPO_PUBLIC_EAS_PROJECT_ID).then((token) => {
+      rememberExpoToken(token);
+      if (token) void post('/notifications/expo-token', { token }).catch(() => undefined);
+    });
+  }, [status]);
+
   useEffect(() => {
     if (status === 'loading') return;
     void SplashScreen.hideAsync().catch(() => undefined);
@@ -34,10 +47,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
     if (status === 'authed' && onAuthPages) {
       router.replace('/');
-      // 尽力注册远程推送令牌（周报推送用），失败静默
-      void registerExpoPushToken(process.env.EXPO_PUBLIC_EAS_PROJECT_ID).then((token) => {
-        if (token) void post('/notifications/expo-token', { token }).catch(() => undefined);
-      });
     }
   }, [status, pathname, router]);
 

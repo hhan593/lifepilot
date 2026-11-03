@@ -38,10 +38,13 @@ export async function getRefreshToken(): Promise<string | null> {
   return safeGetItem(REFRESH_KEY);
 }
 
-/** 冷启动恢复会话：用存储的 refresh token 换新 access token（body 方式，原生端不走 Cookie） */
+/** 冷启动恢复会话：只把存储的 access token 恢复进内存，不在此处强制 refresh（body 方式，原生端不走 Cookie） */
 export async function bootstrapSession(): Promise<boolean> {
   const stored = await safeGetItem(ACCESS_KEY);
   if (stored) accessToken = stored;
+  // access token 有效性交给首个请求验证（401 时 api() 会自动走 tryRefresh）——
+  // 原实现无条件 refresh：断网时把仍有效的会话直接踢掉，且每次冷启动都作废旧 refresh token
+  if (accessToken) return true;
   return tryRefresh();
 }
 
@@ -93,8 +96,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     const ok = await tryRefresh();
     if (ok) {
       res = await doFetch();
-    } else {
-      // 刷新令牌也失效：清除会话并通知跳转登录
+    }
+    if (res.status === 401) {
+      // 刷新失败或刷新后重试仍 401：清除会话并通知跳转登录（否则用户卡死在坏会话）
       accessToken = null;
       await safeDeleteItem(ACCESS_KEY);
       await safeDeleteItem(REFRESH_KEY);

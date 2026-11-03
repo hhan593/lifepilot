@@ -71,7 +71,12 @@ export default function TodayScreen() {
 
   const refreshing =
     weather.isRefetching || todos.isRefetching || water.isRefetching || habits.isRefetching;
-  const onRefresh = () => void queryClient.invalidateQueries();
+  // 下拉只刷新本页关心的查询：无参数 invalidate 会波及 reports/cities 等全部缓存，弱网下并发风暴
+  const onRefresh = () => {
+    for (const key of ['weather', 'todos', 'water', 'habits', 'reports']) {
+      void queryClient.invalidateQueries({ queryKey: [key] });
+    }
+  };
 
   const now = new Date();
   const hour = now.getHours();

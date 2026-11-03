@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { api, post } from '@/lib/api';
 import type { DrinkType, TodoPriority, WeeklyReportPayload, WeeklyReportSummary } from '@lifepilot/shared';
-import { DRINK_LABEL, PRIORITY_LABEL } from '@lifepilot/shared';
+import { DRINK_LABEL, PRIORITY_LABEL, formatLocalDate, shiftLocalDate } from '@lifepilot/shared';
 
 const WEEKDAYS = ['一', '二', '三', '四', '五', '六', '日'];
 
@@ -34,12 +34,6 @@ const DRINK_COLORS: Record<DrinkType, string> = {
   SODA: '#dc2626',
   OTHER: '#64748b',
 };
-
-function shiftWeek(isoDate: string, deltaDays: number): string {
-  const d = new Date(isoDate + 'T00:00:00');
-  d.setDate(d.getDate() + deltaDays);
-  return d.toISOString().slice(0, 10);
-}
 
 export default function ReportsScreen() {
   const queryClient = useQueryClient();
@@ -81,20 +75,20 @@ export default function ReportsScreen() {
   // 上下周切换
   const handlePrevWeek = () => {
     if (!r) return;
-    const prev = shiftWeek(r.weekStart, -7);
+    const prev = shiftLocalDate(r.weekStart, -7);
     setSelectedWeek(prev);
   };
 
   const handleNextWeek = () => {
     if (!r) return;
-    const next = shiftWeek(r.weekStart, 7);
+    const next = shiftLocalDate(r.weekStart, 7);
     // 不能切换到未来的下下周
-    const todayISO = new Date().toISOString().slice(0, 10);
+    const todayISO = formatLocalDate();
     if (next > todayISO) return;
     setSelectedWeek(next);
   };
 
-  const isCurrentWeek = Boolean(r && shiftWeek(r.weekStart, 7) > new Date().toISOString().slice(0, 10));
+  const isCurrentWeek = Boolean(r && shiftLocalDate(r.weekStart, 7) > formatLocalDate());
 
   return (
     <View className="flex-1 bg-zinc-50" style={{ paddingTop: insets.top }}>
