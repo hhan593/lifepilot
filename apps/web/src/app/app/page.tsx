@@ -1,7 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Check, ChevronRight, Plus } from "lucide-react";
 import { TodoItem } from "@/components/todo-item";
 import { WaterRing } from "@/components/water-ring";
@@ -63,10 +64,21 @@ export default function DashboardPage() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["habits"] }),
   });
 
-  const now = new Date();
-  const greeting =
-    now.getHours() < 6 ? "夜深了" : now.getHours() < 11 ? "早安" : now.getHours() < 14 ? "午安" : now.getHours() < 18 ? "下午好" : "晚上好";
-  const dateLabel = now.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" });
+  // 挂载后再取时间：SSR 预渲染的服务器时区/时刻与客户端不一致会触发 hydration mismatch
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => setNow(new Date()), []);
+  const greeting = !now
+    ? ""
+    : now.getHours() < 6
+      ? "夜深了"
+      : now.getHours() < 11
+        ? "早安"
+        : now.getHours() < 14
+          ? "午安"
+          : now.getHours() < 18
+            ? "下午好"
+            : "晚上好";
+  const dateLabel = now?.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" }) ?? "";
 
   const todayTodos = todos.data ?? [];
   const waterSummary = water.data;
@@ -91,9 +103,9 @@ export default function DashboardPage() {
               {todayTodos.length > 0 ? `${todayTodos.length} 项` : ""}
             </span>
           </h2>
-          <a href="/app/todos" className="flex items-center text-xs text-zinc-400 hover:text-brand-600">
+          <Link href="/app/todos" className="flex items-center text-xs text-zinc-400 hover:text-brand-600">
             全部 <ChevronRight className="size-3.5" />
-          </a>
+          </Link>
         </div>
 
         <form
@@ -123,9 +135,9 @@ export default function DashboardPage() {
           )}
         </div>
         {todayTodos.length > 6 && (
-          <a href="/app/todos" className="mt-2 block text-center text-xs text-brand-600">
+          <Link href="/app/todos" className="mt-2 block text-center text-xs text-brand-600">
             还有 {todayTodos.length - 6} 项，查看全部
-          </a>
+          </Link>
         )}
       </section>
 
@@ -167,13 +179,13 @@ export default function DashboardPage() {
       <section>
         <div className="mb-2 flex items-center justify-between">
           <h2 className="section-title">今日习惯</h2>
-          <a href="/app/habits" className="flex items-center text-xs text-zinc-400 hover:text-brand-600">
+          <Link href="/app/habits" className="flex items-center text-xs text-zinc-400 hover:text-brand-600">
             管理 <ChevronRight className="size-3.5" />
-          </a>
+          </Link>
         </div>
         {(habits.data ?? []).length === 0 ? (
           <div className="card text-center text-sm text-zinc-400">
-            还没有习惯，<a href="/app/habits" className="text-brand-600">去创建一个</a> 👇
+            还没有习惯，<Link href="/app/habits" className="text-brand-600">去创建一个</Link> 👇
           </div>
         ) : (
           <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none]">

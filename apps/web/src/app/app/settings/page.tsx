@@ -1,9 +1,11 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Bell, BellOff, MapPin, Plus, Star, Trash2 } from "lucide-react";
+import { Bell, BellOff, LogOut, MapPin, Plus, Star, Trash2 } from "lucide-react";
 import { api, del, patch, post } from "@/lib/api";
+import { useAuthStore } from "@/lib/auth-store";
 import { ACTIVITY_LABEL, ACTIVITY_LEVELS, calcWaterGoalMl } from "@lifepilot/shared";
 import type { ActivityLevel } from "@lifepilot/shared";
 import type { CityData, GeocodeItem, MeData } from "@/lib/types";
@@ -24,6 +26,18 @@ export default function SettingsPage() {
 
   const [form, setForm] = useState<Partial<MeData["settings"]>>({});
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const router = useRouter();
+  const clear = useAuthStore((st) => st.clear);
+
+  // Web 端此前没有任何登出入口，httpOnly Cookie 会话无法主动清除
+  const logout = useMutation({
+    mutationFn: () => post("/auth/logout", {}),
+    onSettled: () => {
+      clear();
+      queryClient.clear();
+      void router.replace("/login");
+    },
+  });
 
   const s = { ...(me.data?.settings ?? {}), ...form };
   const update = (patchData: Partial<MeData["settings"]>) => setForm((f) => ({ ...f, ...patchData }));
@@ -42,11 +56,16 @@ export default function SettingsPage() {
   const [results, setResults] = useState<GeocodeItem[]>([]);
   const [searching, setSearching] = useState(false);
 
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   async function searchCity() {
     if (!query.trim()) return;
     setSearching(true);
+    setSearchError(null);
     try {
       setResults(await api<GeocodeItem[]>(`/cities/search?q=${encodeURIComponent(query.trim())}`));
+    } catch (err) {
+      setSearchError(err instanceof Error ? err.message : "搜索失败，请稍后再试");
     } finally {
       setSearching(false);
     }
@@ -130,6 +149,14 @@ export default function SettingsPage() {
         <p className="section-title">账号</p>
         <p className="mt-1.5 text-sm text-zinc-600">{me.data?.email ?? "…"}</p>
         <p className="text-xs text-zinc-400">时区：{me.data?.timezone ?? "…"}</p>
+        <button
+          type="button"
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl border border-zinc-200 py-2 text-sm text-zinc-600 hover:bg-zinc-50"
+          onClick={() => logout.mutate()}
+          disabled={logout.isPending}
+        >
+          <LogOut className="size-4" /> {logout.isPending ? "退出中…" : "退出登录"}
+        </button>
       </section>
 
       {/* 城市 */}
@@ -150,6 +177,7 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        {searchError && <p className="mt-2 text-xs text-red-500">{searchError}</p>}
         {results.length > 0 && (
           <ul className="mt-2 divide-y divide-zinc-100 rounded-xl border border-zinc-200">
             {results.map((r, i) => (
