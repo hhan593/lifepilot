@@ -4,6 +4,14 @@ import { IsOptional, IsString, Matches } from 'class-validator';
 import { AuthUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ReportsService } from './reports.service';
 
+class WeekQueryDto {
+  @ApiPropertyOptional({ example: '2026-10-26' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'weekStart 需为 yyyy-MM-dd 格式' })
+  weekStart?: string;
+}
+
 class GenerateReportDto {
   @ApiPropertyOptional({ example: '2026-10-26' })
   @IsOptional()
@@ -19,9 +27,9 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('weekly')
-  @ApiOperation({ summary: '获取某周或最新周报（如未生成且指定了日期则自动生成）' })
-  latest(@CurrentUser() user: AuthUser, @Query('weekStart') weekStart?: string) {
-    return this.reportsService.latest(user.id, weekStart);
+  @ApiOperation({ summary: '获取某周或最新周报（只读；未生成返回 404，生成走 POST /weekly/generate）' })
+  latest(@CurrentUser() user: AuthUser, @Query() dto: WeekQueryDto) {
+    return this.reportsService.latest(user.id, dto.weekStart);
   }
 
   @Get('history')

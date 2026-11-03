@@ -35,7 +35,9 @@ export class HttpExceptionFilter implements ExceptionFilter {
         }
       }
     } else {
-      detail = exception instanceof Error ? exception.message : String(exception);
+      // 非 HttpException（未预期错误）：detail 只回通用文案 —— 原始 message 可能携带
+      // Prisma/PG 内部信息（表结构、约束名），仅记录日志不下发客户端
+      detail = '服务器内部错误，请稍后重试';
     }
 
     if (status >= 500) {

@@ -248,33 +248,20 @@ export class ReportsService {
     return payload;
   }
 
+  /** 只读查询：GET 不再隐式触发生成/重算（预取、爬虫、重试都会放大聚合写库），生成统一走 POST /weekly/generate */
   async latest(userId: string, weekStartISO?: string): Promise<WeeklyReportPayload> {
-    if (weekStartISO) {
-      const existing = await this.prisma.weeklyReport.findUnique({
-        where: { userId_weekStart: { userId, weekStart: weekStartISO } },
-      });
-      if (existing) {
-        const payload = existing.payload as unknown as WeeklyReportPayload;
-        // 如果旧周报缺少 score 或 dailyCompleted，顺便自动重新计算并升级数据结构
-        if (typeof payload.score === 'number' && payload.todos?.dailyCompleted) {
-          return payload;
-        }
-      }
-      return this.generate(userId, weekStartISO);
-    }
-
-    const report = await this.prisma.weeklyReport.findFirst({
-      where: { userId },
-      orderBy: { weekStart: 'desc' },
-    });
+    const report = weekStartISO
+      ? await this.prisma.weeklyReport.findUnique({
+          where: { userId_weekStart: { userId, weekStart: weekStartISO } },
+        })
+      : await this.prisma.weeklyReport.findFirst({
+          where: { userId },
+          orderBy: { weekStart: 'desc' },
+        });
     if (!report) {
-      return this.generate(userId);
+      throw new NotFoundException('周报尚未生成，请调用 POST /reports/weekly/generate');
     }
-    const payload = report.payload as unknown as WeeklyReportPayload;
-    if (typeof payload.score !== 'number' || !payload.todos?.dailyCompleted) {
-      return this.generate(userId, report.weekStart);
-    }
-    return payload;
+    return report.payload as unknown as WeeklyReportPayload;
   }
 
   async history(userId: string): Promise<WeeklyReportSummary[]> {

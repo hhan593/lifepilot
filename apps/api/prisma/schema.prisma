@@ -158,6 +158,8 @@ model PushSubscription {
   auth      String
   userAgent String?
   createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 /** 原生 App（Expo）的远程推送令牌，用于服务端推送周报等 */
