@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { calcWaterGoalMl } from '@lifepilot/shared';
+import { isValidTimezone } from '../../common/utils/tz';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 
@@ -37,6 +38,10 @@ export class UsersService {
   }
 
   async updateTimezone(userId: string, timezone: string) {
+    // 必须拒绝非法 IANA 名：坏值落库后 luxon 全线 Invalid，该用户所有接口（含改回时区本身）都会瘫痪
+    if (!isValidTimezone(timezone)) {
+      throw new BadRequestException('timezone 不是合法的 IANA 时区名（如 Asia/Shanghai）');
+    }
     await this.prisma.user.update({ where: { id: userId }, data: { timezone } });
   }
 }
