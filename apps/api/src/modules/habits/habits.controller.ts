@@ -1,8 +1,15 @@
 import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { IsOptional, Matches } from 'class-validator';
 import { AuthUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CreateHabitDto } from './dto/habit.dto';
 import { HabitsService } from './habits.service';
+
+class CheckInQueryDto {
+  @IsOptional()
+  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'date 需为 yyyy-MM-dd 格式' })
+  date?: string;
+}
 
 @ApiBearerAuth()
 @ApiTags('habits')
@@ -25,9 +32,9 @@ export class HabitsController {
   toggleCheckIn(
     @CurrentUser() user: AuthUser,
     @Param('id') id: string,
-    @Query('date') date?: string,
+    @Query() dto: CheckInQueryDto,
   ) {
-    return this.habitsService.toggleCheckIn(user.id, id, date);
+    return this.habitsService.toggleCheckIn(user.id, id, dto.date);
   }
 
   @Get(':id/history')

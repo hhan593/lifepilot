@@ -4,6 +4,11 @@ export function localNow(tz: string): DateTime {
   return DateTime.now().setZone(tz);
 }
 
+/** 时区必须是可用 IANA 名：坏值会让 luxon 全线产出 Invalid DateTime，该用户所有接口瘫痪 */
+export function isValidTimezone(tz: string): boolean {
+  return DateTime.local().setZone(tz).isValid;
+}
+
 /** 用户本地时区的今天，格式 YYYY-MM-DD */
 export function todayISO(tz: string): string {
   return localNow(tz).toFormat('yyyy-MM-dd');

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DateTime } from 'luxon';
 import { todayISO } from '../../common/utils/tz';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -16,6 +16,16 @@ export interface HabitWithStatus {
   streak: HabitStreak;
 }
 
+/** 连击/周状态只看最近 6 周（streaks.ts weeksBack=6），查询窗口留 1 周缓冲 */
+const RECENT_WINDOW_DAYS = 49;
+
+/** 打卡日期必须是合法 ISO 日期：坏值入库会破坏 streak/周报计算 */
+function assertISODate(date: string): void {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !DateTime.fromISO(date).isValid) {
+    throw new BadRequestException('date 需为合法的 yyyy-MM-dd 日期');
+  }
+}
+
 @Injectable()
 export class HabitsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -26,11 +36,12 @@ export class HabitsService {
       select: { timezone: true },
     });
     const today = todayISO(timezone);
+    const windowStart = DateTime.fromISO(today).minus({ days: RECENT_WINDOW_DAYS }).toISODate()!;
 
     const habits = await this.prisma.habit.findMany({
       where: { userId, archived: false },
       orderBy: { createdAt: 'asc' },
-      include: { checkIns: { select: { date: true } } },
+      include: { checkIns: { where: { date: { gte: windowStart } }, select: { date: true } } },
     });
 
     return habits.map((h) => {
@@ -71,6 +82,7 @@ export class HabitsService {
     if (habit.archived) throw new ForbiddenException('习惯已归档');
 
     const day = date ?? todayISO(timezone);
+    assertISODate(day);
     const existing = await this.prisma.habitCheckIn.findUnique({
       where: { habitId_date: { habitId: habit.id, date: day } },
     });
@@ -83,7 +95,7 @@ export class HabitsService {
 
     const dates = (
       await this.prisma.habitCheckIn.findMany({
-        where: { habitId: habit.id },
+        where: { habitId: habit.id, date: { gte: DateTime.fromISO(todayISO(timezone)).minus({ days: RECENT_WINDOW_DAYS }).toISODate()! } },
         select: { date: true },
       })
     ).map((c) => c.date);

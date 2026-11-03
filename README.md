@@ -46,8 +46,26 @@ cd apps/mobile/android && JAVA_HOME=<JDK17+> ./gradlew assembleRelease
 ```
 
 注意事项：
-- **私有仓库 + 免费套餐跑不了 GitHub Pages**（Actions 可以跑，每月 2000 分钟免费额度）；Pages 需把仓库改为 public 或升级 Pro：`gh repo edit --visibility public`
+- （仓库现为 public，Pages 已上线；若转回 private，免费套餐 Pages 会停）
 - H5 部署地址记得在 App 的 `.env`/服务端把 API 地址换成公网可达地址
+- iOS 正式包必须走 Apple Developer 账号（TestFlight/App Store），GitHub 无法绕过签名
+
+## 后端公网部署（让线上 H5 可用）
+
+仓库带 [Render](https://render.com) 一键蓝图（免费 Postgres + 免费 Redis + 免费额度 Web 服务，`render.yaml`）：
+
+1. 打开 **https://dashboard.render.com/blueprint-installer?repo=https://github.com/hhan593/lifepilot** → 用 GitHub 登录 → Apply
+   （或 Render 控制台 New → Blueprint → 选本仓库）
+2. 构建完成后拿到 API 地址（形如 `https://lifepilot-api-xxxx.onrender.com`），健康检查：`/api/v1/health`
+3. GitHub 仓库 **Settings → Secrets and variables → Actions → Variables** 添加：
+   `PUBLIC_API_BASE_URL = https://lifepilot-api-xxxx.onrender.com/api/v1`
+4. 重新发版：`git tag v0.1.1 && git push origin v0.1.1` → Pages 上的 H5 自动指向公网 API
+5. （可选）Web Push：Render 环境变量里填入 VAPID 密钥（本地 `pnpm --filter @lifepilot/api generate:vapid` 生成）
+6. （可选）导入演示数据：本地 `DATABASE_URL="<Render连接串>" pnpm db:seed`
+
+替代平台：Railway（`railway up`）/ Fly.io / 任意 VPS——API 镜像用根目录 `apps/api/Dockerfile` 构建，任意容器平台可跑。
+
+- **免费额度须知**：Render 免费 Web 服务 15 分钟无流量会休眠（首次唤醒 ~30s）；免费 Postgres 有保留期（当前 30 天），到期控制台续期
 - iOS 正式包必须走 Apple Developer 账号（TestFlight/App Store），GitHub 无法绕过签名
 
 - **三端兼容层**（`src/lib/`）：令牌存储 `storage.ts`（原生 Keychain/Keystore，H5 降级 localStorage）；`notifications.ts` / `haptics.ts` 无 web 入口的包按 `Platform.OS` 懒加载，H5 自动降级

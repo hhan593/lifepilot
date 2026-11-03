@@ -1,0 +1,49 @@
+# Render 一键部署蓝图：免费 Postgres + 免费 Redis + 免费额度 Web 服务
+# 部署入口：https://dashboard.render.com/select-repo?repo=hhan593/lifepilot 选此 blueprint
+# 或 README 里的 "Deploy to Render" 按钮
+services:
+  - type: web
+    name: lifepilot-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: lifepilot-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: lifepilot-redis
+          type: redis
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      # 允许 GitHub Pages 的 H5（https://hhan593.github.io）跨域访问
+      - key: WEB_ORIGIN
+        value: https://hhan593.github.io
+      # Web Push 密钥：首次部署后在 Render 控制台手工填入
+      # （本地生成：pnpm --filter @lifepilot/api generate:vapid）
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: mailto:dev@lifepilot.app
+
+  - type: redis
+    name: lifepilot-redis
+    plan: free
+    maxmemoryPolicy: noeviction
+    ipAllowList: [] # 仅集群内部访问
+
+databases:
+  - name: lifepilot-db
+    plan: free
+    # 注意：Render 免费版数据库有保留期限制（当前为 30 天），
+    # 到期需在控制台手动延续或升级，数据请自行定期备份

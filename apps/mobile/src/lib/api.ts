@@ -1,6 +1,7 @@
 import { safeGetItem, safeSetItem, safeDeleteItem } from './storage';
 
-const BASE = process.env.EXPO_PUBLIC_API_BASE ?? 'http://localhost:4000/api/v1';
+// EXPO_PUBLIC_API_BASE 支持空串（GitHub Pages 构建时未配置变量则回退本地）
+const BASE = process.env.EXPO_PUBLIC_API_BASE || 'http://localhost:4000/api/v1';
 
 export class ApiError extends Error {
   status: number;

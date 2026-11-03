@@ -73,11 +73,13 @@ jobs:
       - name: Build shared package
         run: pnpm --filter @lifepilot/shared build
 
-      # GitHub Pages 部署在 <user>.github.io/<repo>/ 子路径，注入 baseUrl
+      # GitHub Pages 部署在 <user>.github.io/<repo>/ 子路径，注入 baseUrl；
+      # API 公网地址在仓库 Variables 里配置（PUBLIC_API_BASE_URL），未配置回退本地
       - name: Build H5
         working-directory: apps/mobile
         env:
           EXPO_PUBLIC_BASE_URL: /${{ github.event.repository.name }}
+          EXPO_PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE_URL }}
         run: pnpm exec expo export --platform web
 
       - name: SPA 回退（深链接刷新 404 修复）

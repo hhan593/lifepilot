@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/.next
+**/.expo
+**/coverage
+apps/mobile
+apps/web
+docs
+**/*.tsbuildinfo
+.env
+.env.*
+**/android
+**/ios
+**/build
+.github
+docker-compose.yml
