@@ -29,6 +29,7 @@ export class TodosService {
       return this.prisma.todo.findMany({
         where: { userId, completedAt: null, dueAt: { gte: end } },
         orderBy: [{ dueAt: 'asc' }, { priority: 'desc' }],
+        take: 200, // 无界列表防护：upcoming 全量返回在长期排期下响应失控
       });
     }
 
