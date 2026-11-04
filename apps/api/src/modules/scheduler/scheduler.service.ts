@@ -17,7 +17,7 @@ const WATER_TIPS = [
 @Injectable()
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
-  /** 单机内存去重：userId|date|HH:MM（重启后最多重复提醒一次，可接受） */
+  /** 单机内存去重：userId|date|HH:MM（重启后最多重复提醒一次，可接受；多实例部署需换共享存储如 Redis） */
   private readonly sentWaterKeys = new Set<string>();
 
   constructor(
@@ -55,7 +55,12 @@ export class SchedulerService {
       if (summary.hydrationMl >= summary.goalMl) continue;
 
       this.sentWaterKeys.add(dedupeKey);
-      if (this.sentWaterKeys.size > 10_000) this.sentWaterKeys.clear();
+      // 只剪枝过期的旧日期键：clear() 会把同一分钟内已推送的键全部抹掉，引发一轮重复推送
+      if (this.sentWaterKeys.size > 10_000) {
+        for (const key of this.sentWaterKeys) {
+          if (!key.includes(`|${dateKey}|`)) this.sentWaterKeys.delete(key);
+        }
+      }
 
       const body = `${summary.hydrationMl}/${summary.goalMl}ml，还差 ${summary.remainingMl}ml。${WATER_TIPS[Math.floor(Math.random() * WATER_TIPS.length)]}`;
       await this.notifications
