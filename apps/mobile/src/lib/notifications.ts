@@ -98,3 +98,22 @@ export async function registerExpoPushToken(projectId?: string): Promise<string 
     return null;
   }
 }
+
+/** 本设备已成功注册的 expo push token（登出时需到服务端解除绑定） */
+let registeredExpoToken: string | null = null;
+
+/** 登出清理：取消本设备全部已调度的本地通知，并解除服务端 expo token 绑定（换账号不沿用上一用户的提醒） */
+export async function clearNotificationSession(): Promise<void> {
+  const Notifications = await getNotifications();
+  await Notifications?.cancelAllScheduledNotificationsAsync().catch(() => undefined);
+  if (registeredExpoToken) {
+    const { post } = await import('./api');
+    await post('/notifications/expo-token/remove', { token: registeredExpoToken }).catch(() => undefined);
+    registeredExpoToken = null;
+  }
+}
+
+/** 注册成功后由调用方记录 token，供登出时解除绑定 */
+export function rememberExpoToken(token: string | null): void {
+  registeredExpoToken = token;
+}
