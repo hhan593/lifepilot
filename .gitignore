@@ -19,3 +19,7 @@ ios/
 
 # 签名密钥不入库（CI 从 GitHub Secret 解出）
 apps/mobile/android/app/lifepilot-release.keystore
+
+# 编辑器 / agent 本地配置不入库（各自机器生成，避免重复副本与泄露本地环境）
+.claude/
+.vscode/

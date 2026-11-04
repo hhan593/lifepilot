@@ -25,7 +25,8 @@ services:
       - redisdata:/data
 
   api:
-    build: ./apps/api
+    # pnpm workspace 需要根 lockfile，构建上下文取仓库根
+    build: { context: ., dockerfile: apps/api/Dockerfile }
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,14 +35,14 @@ services:
     environment:
       DATABASE_URL: postgresql://lifepilot:lifepilot@postgres:5432/lifepilot
       REDIS_URL: redis://redis:6379
-      JWT_SECRET: ${JWT_SECRET:-change-me}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 必须设置（至少 16 字符随机值）}
       NODE_ENV: production
       PORT: 4000
     ports:
       - "4000:4000"
 
   web:
-    build: ./apps/web
+    build: { context: ., dockerfile: apps/web/Dockerfile }
     depends_on:
       - api
     environment:
