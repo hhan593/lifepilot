@@ -46,6 +46,10 @@ jobs:
       - name: Build shared
         run: pnpm --filter @lifepilot/shared build
 
+      # 全新 CI 环境里 @prisma/client 尚未生成，typecheck / build 会拿到空类型并大面积报错
+      - name: Prisma generate
+        run: pnpm --filter @lifepilot/api exec prisma generate --schema prisma/schema.prisma
+
       - name: Typecheck (api)
         run: pnpm --filter @lifepilot/api exec tsc --noEmit
 
