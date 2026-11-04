@@ -1,6 +1,13 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
+import { api } from '@/lib/api';
 import type { HabitWithStatus } from '@/lib/types';
+
+interface HistoryDay {
+  date: string;
+  checked: boolean;
+}
 
 export function HabitCard({
   habit,
@@ -11,8 +18,15 @@ export function HabitCard({
   onToggle: () => void;
   onDelete: () => void;
 }) {
+  const queryClient = useQueryClient();
+  // 与 Web 版一致拉取打卡历史：只看 todayChecked 时过去 6 天永远灰色，与 streak 数据矛盾
+  const history = useQuery({
+    queryKey: ['habit-history', habit.id],
+    queryFn: () => api<HistoryDay[]>(`/habits/${habit.id}/history`),
+  });
   const last7 = recentDays(7);
-  const checkedSet = new Set<string>([...(habit.todayChecked ? [habit.today] : [])]);
+  const checkedSet = new Set<string>((history.data ?? []).filter((d) => d.checked).map((d) => d.date));
+  if (habit.todayChecked) checkedSet.add(habit.today);
 
   return (
     <View className="overflow-hidden rounded-3xl bg-white p-4 shadow-xs border border-zinc-200/80">
