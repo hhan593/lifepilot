@@ -48,19 +48,22 @@ export class TodosService {
   }
 
   async create(userId: string, dto: CreateTodoDto) {
-    const agg = await this.prisma.todo.aggregate({
-      where: { userId, completedAt: null },
-      _max: { sortIndex: true },
-    });
-    return this.prisma.todo.create({
-      data: {
-        userId,
-        title: dto.title.trim(),
-        notes: dto.notes,
-        priority: (dto.priority as TodoPriority) ?? 'MEDIUM',
-        dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
-        sortIndex: (agg._max.sortIndex ?? 0) + 1,
-      },
+    // max+1 与写入放同一事务，避免并发创建拿到相同 sortIndex
+    return this.prisma.$transaction(async (tx) => {
+      const agg = await tx.todo.aggregate({
+        where: { userId, completedAt: null },
+        _max: { sortIndex: true },
+      });
+      return tx.todo.create({
+        data: {
+          userId,
+          title: dto.title.trim(),
+          notes: dto.notes,
+          priority: (dto.priority as TodoPriority) ?? 'MEDIUM',
+          dueAt: dto.dueAt ? new Date(dto.dueAt) : null,
+          sortIndex: (agg._max.sortIndex ?? 0) + 1,
+        },
+      });
     });
   }
 
@@ -72,7 +75,15 @@ export class TodosService {
     if (dto.priority !== undefined) data.priority = dto.priority as TodoPriority;
     if (dto.dueAt !== undefined) data.dueAt = dto.dueAt ? new Date(dto.dueAt) : null;
     if (dto.completed !== undefined) data.completedAt = dto.completed ? new Date() : null;
-    return this.prisma.todo.update({ where: { id }, data });
+    try {
+      return await this.prisma.todo.update({ where: { id }, data });
+    } catch (err) {
+      // 属主断言与写入之间可能被并发删除：P2025 转 404，不落 500
+      if (typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2025') {
+        throw new NotFoundException('待办不存在');
+      }
+      throw err;
+    }
   }
 
   async remove(userId: string, id: string) {
