@@ -4,6 +4,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -18,11 +19,13 @@ export class CreateCityDto {
   @ApiProperty({ example: 39.9042 })
   @IsNumber()
   @Min(-90)
+  @Max(90)
   latitude!: number;
 
   @ApiProperty({ example: 116.4074 })
   @IsNumber()
   @Min(-180)
+  @Max(180)
   longitude!: number;
 
   @ApiPropertyOptional({ example: '北京, 北京市, 中国' })
