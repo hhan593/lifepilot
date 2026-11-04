@@ -134,12 +134,13 @@ export class NotificationsService {
     return this.prisma.pushSubscription.upsert({
       where: { endpoint: input.endpoint },
       create: { userId, ...input },
-      update: { userId, p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent },
+      // 不改写 userId：endpoint 已属于他人时不得把它挂到自己名下
+      update: { p256dh: input.p256dh, auth: input.auth, userAgent: input.userAgent },
     });
   }
 
-  async removeSubscription(endpoint: string) {
-    await this.prisma.pushSubscription.deleteMany({ where: { endpoint } });
+  async removeSubscription(userId: string, endpoint: string) {
+    await this.prisma.pushSubscription.deleteMany({ where: { endpoint, userId } });
     return { ok: true };
   }
 
@@ -151,8 +152,8 @@ export class NotificationsService {
     });
   }
 
-  async removeExpoToken(token: string) {
-    await this.prisma.expoPushToken.deleteMany({ where: { token } });
+  async removeExpoToken(userId: string, token: string) {
+    await this.prisma.expoPushToken.deleteMany({ where: { token, userId } });
     return { ok: true };
   }
 }

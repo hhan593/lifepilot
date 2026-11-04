@@ -36,13 +36,22 @@ export class AuthService {
     if (exists) throw new ConflictException('该邮箱已注册');
 
     const passwordHash = await hash(dto.password);
-    const user = await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        settings: { create: {} },
-      },
-    });
+    let user;
+    try {
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          settings: { create: {} },
+        },
+      });
+    } catch (err) {
+      // 并发注册同名邮箱撞唯一约束：返回 409 而非 500（不向客户端泄露 Prisma 内部信息）
+      if (typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002') {
+        throw new ConflictException('该邮箱已注册');
+      }
+      throw err;
+    }
     return this.issueTokens(user.id, user.email);
   }
 
@@ -63,7 +72,16 @@ export class AuthService {
       where: { tokenHash: this.sha256(rawToken) },
       include: { user: true },
     });
-    if (!record || record.revokedAt || record.expiresAt < new Date()) {
+    if (!record || record.expiresAt < new Date()) {
+      throw new UnauthorizedException('登录已过期，请重新登录');
+    }
+    if (record.revokedAt) {
+      // 重用检测：已撤销的 refresh token 再次出现 = 原会话已被窃取/重放，
+      // 吊销该用户全部 refresh token，逼迫所有会话重新登录
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: record.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
       throw new UnauthorizedException('登录已过期，请重新登录');
     }
 

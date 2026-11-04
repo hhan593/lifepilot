@@ -52,8 +52,9 @@ export class NotificationsController {
   }
 
   @Post('subscriptions/unsubscribe')
-  unsubscribe(@Body() dto: UnsubscribeDto) {
-    return this.notificationsService.removeSubscription(dto.endpoint);
+  unsubscribe(@CurrentUser() user: AuthUser, @Body() dto: UnsubscribeDto) {
+    // 退订必须限定自己的订阅：凭 endpoint 删他人订阅会让别人收不到提醒（IDOR）
+    return this.notificationsService.removeSubscription(user.id, dto.endpoint);
   }
 
   /** 原生 App（Expo）登录后注册远程推送令牌 */
@@ -63,8 +64,8 @@ export class NotificationsController {
   }
 
   @Post('expo-token/remove')
-  removeExpoToken(@Body() dto: ExpoTokenDto) {
-    return this.notificationsService.removeExpoToken(dto.token);
+  removeExpoToken(@CurrentUser() user: AuthUser, @Body() dto: ExpoTokenDto) {
+    return this.notificationsService.removeExpoToken(user.id, dto.token);
   }
 
   /** 测试推送：验证订阅链路是否打通 */
