@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { api, bootstrapSession, getRefreshToken, onSessionExpired, post, setTokens } from './api';
+import { ApiError, api, bootstrapSession, getRefreshToken, onSessionExpired, post, setTokens } from './api';
+import { clearNotificationSession } from './notifications';
 
 export interface UserSummary {
   id: string;
@@ -41,9 +42,15 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const me = await api<UserSummary>('/users/me');
       set({ status: 'authed', user: me });
-    } catch {
-      await setTokens(null, null);
-      set({ status: 'guest', user: null });
+    } catch (err) {
+      // 仅 token 确认失效（401）才登出；网络/服务端故障保留本地会话，
+      // 后续请求经 api() 自愈（真正过期会触发 onSessionExpired）
+      if (err instanceof ApiError && err.status === 401) {
+        await setTokens(null, null);
+        set({ status: 'guest', user: null });
+      } else {
+        set({ status: 'authed', user: null });
+      }
     }
   },
 
@@ -63,6 +70,9 @@ export const useAuthStore = create<AuthState>((set) => ({
     const refreshToken = await getRefreshToken();
     await post('/auth/logout', { refreshToken }).catch(() => undefined);
     await setTokens(null, null);
+    // 取消本设备已调度的本地通知（喝水提醒等）并解除推送令牌绑定：
+    // 不清理的话换账号后本地通知继续弹、服务端仍向旧 token 推周报
+    await clearNotificationSession().catch(() => undefined);
     set({ status: 'guest', user: null });
   },
 }));
