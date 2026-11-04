@@ -53,13 +53,6 @@ export default function TodosPage() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["todos"] }),
   });
 
-  const upcomingHint = (t: TodoData) =>
-    view !== "today" || !t.dueAt
-      ? null
-      : t.dueAt < new Date().toISOString() && new Date(t.dueAt) < new Date(new Date().toDateString())
-        ? "已过期"
-        : null;
-
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">待办</h1>
@@ -130,7 +123,6 @@ export default function TodosPage() {
               onToggle={(todo, completed) => toggle.mutate({ id: todo.id, completed })}
               onDelete={(todo) => remove.mutate(todo.id)}
             />
-            {upcomingHint(t) && <p className="-mt-1 pb-1.5 pl-8 text-[11px] text-red-500">已过期</p>}
           </div>
         ))}
       </div>

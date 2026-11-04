@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { CalendarCheck, FileText, ListTodo, Settings, Sun } from "lucide-react";
@@ -62,7 +63,8 @@ function NavItem({ item }: { item: (typeof NAV)[number] }) {
   const pathname = usePathname();
   const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
   return (
-    <a
+    // 必须用 <Link>：token 只存内存，<a href> 整页刷新会丢 token 并多一次 refresh 往返
+    <Link
       href={item.href}
       className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-[11px] ${
         active ? "text-brand-600" : "text-zinc-400"
@@ -70,7 +72,7 @@ function NavItem({ item }: { item: (typeof NAV)[number] }) {
     >
       <item.icon className="size-5" />
       {item.label}
-    </a>
+    </Link>
   );
 }
 
