@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import {
   Cloud,
   CloudDrizzle,
@@ -39,9 +41,9 @@ export function WeatherCard({ data }: { data: CityWeather | null }) {
           <p className="section-title">还没有天气数据</p>
           <p className="mt-1 text-sm text-zinc-500">去设置里添加一个城市吧</p>
         </div>
-        <a href="/app/settings" className="btn-ghost">
+        <Link href="/app/settings" className="btn-ghost">
           添加城市
-        </a>
+        </Link>
       </div>
     );
   }
