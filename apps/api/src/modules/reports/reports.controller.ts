@@ -19,7 +19,7 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('weekly')
-  @ApiOperation({ summary: '获取某周或最新周报（只读；未生成返回 404，生成走 POST /weekly/generate）' })
+  @ApiOperation({ summary: '获取某周或最新周报（如未生成且指定了日期则自动生成）' })
   latest(@CurrentUser() user: AuthUser, @Query('weekStart') weekStart?: string) {
     return this.reportsService.latest(user.id, weekStart);
   }
