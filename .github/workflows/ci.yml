@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: lifepilot
+          POSTGRES_PASSWORD: lifepilot
+          POSTGRES_DB: lifepilot
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U lifepilot"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://lifepilot:lifepilot@localhost:5432/lifepilot
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: ci-secret-0123456789abcdef
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @lifepilot/shared build
+
+      - name: Typecheck (api)
+        run: pnpm --filter @lifepilot/api exec tsc --noEmit
+
+      - name: Typecheck (web)
+        run: pnpm --filter @lifepilot/web exec tsc --noEmit
+
+      - name: Prisma migrate
+        run: pnpm --filter @lifepilot/api exec prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: E2E tests
+        run: pnpm test:e2e
+
+      - name: Build all
+        run: pnpm -r build
