@@ -212,3 +212,19 @@ export interface PushPayload {
   body: string;
   url: string;
 }
+
+/** 本地时区的 yyyy-MM-dd（toISOString 是 UTC，UTC+ 时区会回退一天 —— 周报翻页/今日判断必须用本地日期） */
+export function formatLocalDate(d: Date = new Date()): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** 以本地日期为刻度平移 N 天，返回 yyyy-MM-dd（isoDate 需为 yyyy-MM-dd） */
+export function shiftLocalDate(isoDate: string, deltaDays: number): string {
+  const [y, m, day] = isoDate.split("-").map(Number);
+  const d = new Date(y, (m ?? 1) - 1, day ?? 1);
+  d.setDate(d.getDate() + deltaDays);
+  return formatLocalDate(d);
+}
