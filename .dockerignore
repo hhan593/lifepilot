@@ -1,0 +1,21 @@
+# Docker 构建上下文只需 workspace 清单 + api/shared/web 源码。
+# 排除大目录与本机密钥，避免上下文传输几百 MB 或把本地 keystore 带进构建环境。
+.git
+.github
+.workbuddy
+node_modules
+**/node_modules
+**/dist
+**/build
+**/.next
+**/.expo
+**/.turbo
+**/coverage
+.env
+.env.*
+!**/.env.example
+apps/mobile
+docs
+*.log
+*.md
+.DS_Store

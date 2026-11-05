@@ -24,7 +24,12 @@ services:
         generateValue: true
       - key: NODE_ENV
         value: production
-      # 允许 GitHub Pages 的 H5（https://hhan593.github.io）跨域访问
+      # Render 边缘代理为一跳：Throttler 才能读到真实 X-Forwarded-For，
+      # 否则反向代理后所有用户共享同一份限流配额
+      - key: TRUST_PROXY
+        value: "1"
+      # 允许 GitHub Pages 的 H5（https://hhan593.github.io）跨域访问；
+      # 追加自定义域时用逗号分隔，例如 https://hhan593.github.io,https://app.example.com
       - key: WEB_ORIGIN
         value: https://hhan593.github.io
       # Web Push 密钥：首次部署后在 Render 控制台手工填入

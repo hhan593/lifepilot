@@ -1,30 +1,34 @@
 # 本地开发用 Homebrew 服务即可（postgresql@17 / redis）。
-# 此文件用于生产部署或无 Homebrew 环境。
+# 此文件用于生产部署或无 Homebrew 环境；生产密钥由同目录 .env 注入，见 README「部署」。
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: lifepilot
-      POSTGRES_PASSWORD: lifepilot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lifepilot}
       POSTGRES_DB: lifepilot
+    # 仅回环可达：容器内供 api 使用，本机可 psql；不对公网暴露
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U lifepilot"]
       interval: 5s
       retries: 10
+    mem_limit: 448m
 
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redisdata:/data
+    mem_limit: 96m
 
   api:
+    image: lifepilot/api:prod
     # pnpm workspace 需要根 lockfile，构建上下文取仓库根
     build: { context: ., dockerfile: apps/api/Dockerfile }
     depends_on:
@@ -33,15 +37,28 @@ services:
       redis:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://lifepilot:lifepilot@postgres:5432/lifepilot
+      DATABASE_URL: postgresql://lifepilot:${POSTGRES_PASSWORD:-lifepilot}@postgres:5432/lifepilot
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 必须设置（至少 16 字符随机值）}
       NODE_ENV: production
       PORT: 4000
+      # 逗号分隔的允许来源（H5 所在域）；VPS 上换成自己的前端来源
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      # 前置 nginx/caddy 同机反代用 loopback；多层代理或云负载均衡改成跳数（如 1）
+      TRUST_PROXY: ${TRUST_PROXY:-loopback}
+      # 纯 HTTP 部署（无域名 / 证书）必须 false，否则浏览器不保存 refresh Cookie；
+      # 上了 HTTPS 后改成 true
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Web Push 可选：未配置时推送静默跳过，不影响启动
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-mailto:dev@lifepilot.app}
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
+    mem_limit: 512m
 
   web:
+    image: lifepilot/web:prod
     build: { context: ., dockerfile: apps/web/Dockerfile }
     depends_on:
       - api
@@ -50,6 +67,7 @@ services:
       NODE_ENV: production
     ports:
       - "3000:3000"
+    mem_limit: 448m
 
 volumes:
   pgdata:
