@@ -59,7 +59,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: apps/mobile/android/app/build/outputs/apk/release/app-release.apk
-          generate_release_notes: true
+          # Release notes 只由 h5 job 生成一次：两个 job 都开会重复追加同一份变更记录
 
   h5:
     runs-on: ubuntu-latest
