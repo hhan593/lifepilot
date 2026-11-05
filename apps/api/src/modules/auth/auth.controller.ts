@@ -65,7 +65,12 @@ export class AuthController {
     return {
       httpOnly: true,
       sameSite: 'lax' as const,
-      secure: process.env.NODE_ENV === 'production',
+      // 默认按环境开启 Secure；纯 HTTP 部署（VPS 直连、无域名证书）需 COOKIE_SECURE=false，
+      // 否则浏览器不保存 refresh Cookie，登录刷新链路直接失效
+      secure:
+        process.env.COOKIE_SECURE !== undefined
+          ? process.env.COOKIE_SECURE === 'true'
+          : process.env.NODE_ENV === 'production',
       path: '/api/v1/auth',
     };
   }
