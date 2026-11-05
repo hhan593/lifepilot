@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LifeBuoy } from "lucide-react";
@@ -89,12 +90,12 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
         <p className="mt-4 text-center text-sm text-zinc-500">
           {isRegister ? "已有账号？" : "还没有账号？"}
-          <a
+          <Link
             href={isRegister ? "/login" : "/register"}
             className="ml-1 font-medium text-brand-600 hover:underline"
           >
             {isRegister ? "去登录" : "注册一个"}
-          </a>
+          </Link>
         </p>
       </div>
     </div>
