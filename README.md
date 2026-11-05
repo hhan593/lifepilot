@@ -143,7 +143,47 @@ packages/shared  三端共享类型、WMO 天气码表、饮水目标公式、�
 
 ## 部署
 
-根目录 `docker-compose.yml` 提供 postgres + redis + api + web 四个服务，`JWT_SECRET` 由环境注入，Caddy 可再加一层 HTTPS 反代。
+根目录 `docker-compose.yml` 提供 postgres + redis + api + web 四个服务。以下是 2 核 2G VPS（Ubuntu 22.04、无域名）的部署记录。
+
+### 拓扑
+
+- 入口 `http://<公网 IP>:3000`（Next `web`），`/api/*` 由 Next rewrites 同源代理到 `api:4000`，无需 Caddy / 域名。
+- `postgres`(5432) / `redis`(6379) / `api`(4000) 的端口只绑 `127.0.0.1`，仅 3000 对外；安全组只需放行 3000。
+- 四个容器设了 `mem_limit`（合计约 1.5G），服务器另加 4G swap 兜底。
+- **镜像在内存充足的机器 / CI 上构建后导入**，2G VPS 不跑构建：`docker compose up --build` 会并行构建 api + web 两个镜像，`next build` 峰值 1G+，必定 OOM。
+
+### 环境变量（服务器 `/opt/lifepilot/.env`，不入库）
+
+| 变量 | 说明 |
+| --- | --- |
+| `POSTGRES_PASSWORD` | 数据库密码，`openssl rand -hex 24`；同时用于 `DATABASE_URL` |
+| `JWT_SECRET` | 至少 16 位，`openssl rand -hex 32`；缺失时 compose 直接报错 |
+| `WEB_ORIGIN` | 允许的前端来源，如 `http://36.150.237.4:3000`（多个逗号分隔） |
+| `TRUST_PROXY` | `1`：Next rewrites 是一跳代理，让 api 信任 `X-Forwarded-For`，否则限流把所有用户算一个 IP |
+| `COOKIE_SECURE` | 纯 HTTP 必须 `false`；上 HTTPS 后改 `true`（不设则按 `NODE_ENV=production` 默认 true） |
+| `VAPID_*` | Web Push 可选，不配则静默跳过 |
+
+### 首次部署
+
+```bash
+# 开发机（Docker 可用）：构建并流式导入镜像
+docker compose build api web
+docker save lifepilot/api:prod lifepilot/web:prod | gzip | ssh -i <pem> root@<ip> 'gunzip | docker load'
+
+# 服务器
+curl -fsSL https://get.docker.com | sh
+fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+git clone https://github.com/hhan593/lifepilot.git /opt/lifepilot
+cd /opt/lifepilot && docker compose up -d --no-build
+curl -s http://127.0.0.1:3000/api/v1/health
+```
+
+后续更新：`git pull` 后重新构建导入镜像，再 `docker compose up -d --no-build`。数据库密码变更只影响首次初始化的卷，已有卷需另行 `ALTER USER`。
+
+### 其它平台
+
+仓库带 [Render](https://render.com) 一键蓝图（`render.yaml`），见上文「后端公网部署」；Railway / Fly.io 可用 `apps/api/Dockerfile`（构建上下文为仓库根）。
 
 ## 浏览器推送（Web Push）
 
