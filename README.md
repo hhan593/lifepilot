@@ -150,7 +150,16 @@ packages/shared  三端共享类型、WMO 天气码表、饮水目标公式、�
 - 入口 `http://<公网 IP>:3000`（Next `web`），`/api/*` 由 Next rewrites 同源代理到 `api:4000`，无需 Caddy / 域名。
 - `postgres`(5432) / `redis`(6379) / `api`(4000) 的端口只绑 `127.0.0.1`，仅 3000 对外；安全组只需放行 3000。
 - 四个容器设了 `mem_limit`（合计约 1.5G），服务器另加 4G swap 兜底。
-- **镜像在内存充足的机器 / CI 上构建后导入**，2G VPS 不跑构建：`docker compose up --build` 会并行构建 api + web 两个镜像，`next build` 峰值 1G+，必定 OOM。
+- 构建必须**串行**：并行构建 api + web 时 `next build` 峰值 1G+，2G 机器会 OOM。
+
+### 网络前提（国内 VPS 实测）
+
+`registry-1.docker.io`、`get.docker.com`、`github.com` 均不可达；可用的是 `docker.m.daocloud.io`、`registry.npmmirror.com`、`mirrors.aliyun.com`、`ghcr.io` 和系统自带的 Ubuntu apt 源。因此：
+
+- Docker 走 apt 安装，不用官方安装脚本；
+- 代码用 `scp` 传构建上下文，不用 `git clone`；
+- 镜像在服务器原生 amd64 构建（Apple Silicon 开发机跨架构 QEMU 跑 `pnpm install` 极慢且易断流）；
+- Dockerfile 用 `BASE_IMAGE` / `PNPM_REGISTRY` 两个 build-arg 切镜像源，`apk` 源已改为阿里云。
 
 ### 环境变量（服务器 `/opt/lifepilot/.env`，不入库）
 
@@ -166,20 +175,35 @@ packages/shared  三端共享类型、WMO 天气码表、饮水目标公式、�
 ### 首次部署
 
 ```bash
-# 开发机（Docker 可用）：构建并流式导入镜像
-docker compose build api web
-docker save lifepilot/api:prod lifepilot/web:prod | gzip | ssh -i <pem> root@<ip> 'gunzip | docker load'
-
-# 服务器
-curl -fsSL https://get.docker.com | sh
+# 1) 服务器：Docker + swap
+apt-get install -y docker.io docker-compose-v2 && systemctl enable --now docker
 fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
-git clone https://github.com/hhan593/lifepilot.git /opt/lifepilot
-cd /opt/lifepilot && docker compose up -d --no-build
+
+# 2) 开发机：打包构建上下文（排除 node_modules / .env / mobile），scp 到服务器解压
+tar -czf /tmp/lp_src.tgz --exclude=.git --exclude=node_modules --exclude='*/node_modules' \
+  --exclude=.env --exclude='.env.*' --exclude=dist --exclude=.next --exclude=apps/mobile .
+scp -i <pem> /tmp/lp_src.tgz root@<ip>:/tmp/
+# 服务器
+mkdir -p /opt/lifepilot && tar -xzf /tmp/lp_src.tgz -C /opt/lifepilot
+
+# 3) 服务器：生成 .env
+printf 'POSTGRES_PASSWORD=%s\nJWT_SECRET=%s\nWEB_ORIGIN=http://<ip>:3000\nTRUST_PROXY=1\nCOOKIE_SECURE=false\n' \
+  "$(openssl rand -hex 24)" "$(openssl rand -hex 32)" > /opt/lifepilot/.env
+chmod 600 /opt/lifepilot/.env
+
+# 4) 服务器：串行构建（不要一次 build 两个服务）
+cd /opt/lifepilot
+ARGS='--build-arg BASE_IMAGE=docker.m.daocloud.io/library/node:22-alpine --build-arg PNPM_REGISTRY=https://registry.npmmirror.com'
+docker compose build $ARGS api
+docker compose build $ARGS web
+
+# 5) 启动与验证
+docker compose up -d --no-build
 curl -s http://127.0.0.1:3000/api/v1/health
 ```
 
-后续更新：`git pull` 后重新构建导入镜像，再 `docker compose up -d --no-build`。数据库密码变更只影响首次初始化的卷，已有卷需另行 `ALTER USER`。
+后续更新：重新传源码、`docker compose build` 后再 `up -d --no-build`。数据库密码变更只影响首次初始化的卷，已有卷需另行 `ALTER USER`。
 
 ### 其它平台
 
