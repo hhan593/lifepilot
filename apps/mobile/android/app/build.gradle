@@ -104,27 +104,16 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
-        // 自签名发布密钥：CI 无密钥时回退 debug 签名（仅测试用）
+        // 自签名发布密钥：keystore 与密码必须显式注入（CI Secret / 本地 gradle.properties）。
+        // 这里不再有 debug.keystore 回退，也不在配置阶段抛错 —— 缺料由下方 taskGraph
+        // 守卫在 release 打包前统一拦截，assembleDebug / IDE sync 不受影响。
         release {
-            def ksFile = file('lifepilot-release.keystore')
-            if (ksFile.exists()) {
-                // 密码必须显式注入（CI Secret / 本地 gradle.properties），不再有代码内默认值
-                // 本地可写 gradle.properties（project property），CI 走环境变量注入
-                def storePass = findProperty('LIFEPILOT_UPLOAD_STORE_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_STORE_PASSWORD')
-                def keyPass = findProperty('LIFEPILOT_UPLOAD_KEY_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_KEY_PASSWORD')
-                if (storePass == null || keyPass == null) {
-                    throw new GradleException("缺少 LIFEPILOT_UPLOAD_STORE_PASSWORD / LIFEPILOT_UPLOAD_KEY_PASSWORD（CI 经 Secret 注入，本地放 gradle.properties）")
-                }
-                storeFile ksFile
-                storePassword storePass
-                keyAlias 'lifepilot'
-                keyPassword keyPass
-            } else {
-                storeFile file('debug.keystore')
-                storePassword 'android'
-                keyAlias 'androiddebugkey'
-                keyPassword 'android'
-            }
+            def storePass = findProperty('LIFEPILOT_UPLOAD_STORE_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_STORE_PASSWORD')
+            def keyPass = findProperty('LIFEPILOT_UPLOAD_KEY_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_KEY_PASSWORD')
+            storeFile file('lifepilot-release.keystore')
+            storePassword storePass ?: ''
+            keyAlias 'lifepilot'
+            keyPassword keyPass ?: ''
         }
     }
     buildTypes {
@@ -149,6 +138,25 @@ android {
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+}
+
+// release 打包前强制校验签名材料：缺 keystore / 密码即失败，绝不静默产出 debug 签名的"正式"APK。
+// 放在 taskGraph 就绪阶段而非配置阶段，保证 debug 构建与 IDE sync 仍能正常执行。
+gradle.taskGraph.whenReady { graph ->
+    def needsReleaseSigning = graph.allTasks.any { task ->
+        def name = task.name.toLowerCase()
+        (name.startsWith('assemble') || name.startsWith('bundle')) && name.contains('release')
+    }
+    if (!needsReleaseSigning) return
+
+    if (!file('lifepilot-release.keystore').exists()) {
+        throw new GradleException("缺少 lifepilot-release.keystore：CI 经 LIFEPILOT_KEYSTORE_BASE64 Secret 注入，本地放到 android/app/；禁止回退 debug 签名")
+    }
+    def storePass = findProperty('LIFEPILOT_UPLOAD_STORE_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_STORE_PASSWORD')
+    def keyPass = findProperty('LIFEPILOT_UPLOAD_KEY_PASSWORD') ?: System.getenv('LIFEPILOT_UPLOAD_KEY_PASSWORD')
+    if (!storePass || !keyPass) {
+        throw new GradleException("缺少 LIFEPILOT_UPLOAD_STORE_PASSWORD / LIFEPILOT_UPLOAD_KEY_PASSWORD（CI 经 Secret 注入，本地放 gradle.properties）")
     }
 }
 

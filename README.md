@@ -48,6 +48,8 @@ cd apps/mobile/android && JAVA_HOME=<JDK17+> ./gradlew assembleRelease
 # 产物：android/app/build/outputs/apk/release/app-release.apk
 ```
 
+release 打包前会强制校验 keystore 与两个密码，缺任一即构建失败（不会静默回退 debug 签名）；debug 构建不受影响。
+
 注意事项：
 - （仓库现为 public，Pages 已上线；若转回 private，免费套餐 Pages 会停）
 - H5 部署地址记得在 App 的 `.env`/服务端把 API 地址换成公网可达地址
@@ -134,7 +136,7 @@ packages/shared  三端共享类型、WMO 天气码表、饮水目标公式、�
 
 - **认证**：短效 JWT（Authorization 头）+ httpOnly Cookie 刷新令牌旋转（数据库存哈希，可吊销）
 - **宽容连击**：习惯按「每周目标次数」计连击周数，漏一天不清零（`apps/api/src/modules/habits/streaks.ts`，纯函数有单测）
-- **提醒调度**：BullMQ 每分钟扫描用户提醒时间点 → 免打扰/达标检查 → Web Push（重试 + 指数退避）
+- **提醒调度**：BullMQ 每分钟扫描用户提醒时间点 → 免打扰/达标检查 → Web Push（重试 + 指数退避）；同一用户/日期/时刻的去重键存 Redis（`SET NX EX 86400`），多实例与重启都不会重复推送
 - **周报**：按用户时区 ISO 周聚合待办/饮水/习惯 → 结构化 JSON + Markdown，周五定时生成或手动触发
 - **天气缓存**：Postgres 10 分钟 TTL，源站故障自动降级过期缓存；Provider 抽象类便于扩展新数据源
 - **错误契约**：全局 RFC 7807 problem+json；前端 api client 401 自动刷新重试

@@ -5,6 +5,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ReportsService } from '../reports/reports.service';
 import { WaterService } from '../water/water.service';
+import { WaterReminderDedupe } from './water-reminder-dedupe';
 
 const WATER_TIPS = [
   '小口慢饮，补水更均匀 💧',
@@ -17,14 +18,13 @@ const WATER_TIPS = [
 @Injectable()
 export class SchedulerService {
   private readonly logger = new Logger(SchedulerService.name);
-  /** 单机内存去重：userId|date|HH:MM（重启后最多重复提醒一次，可接受；多实例部署需换共享存储如 Redis） */
-  private readonly sentWaterKeys = new Set<string>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
     private readonly waterService: WaterService,
     private readonly reportsService: ReportsService,
+    private readonly waterDedupe: WaterReminderDedupe,
   ) {}
 
   /** 每分钟扫描：命中用户配置的提醒时间点 → 检查免打扰/达标 → 投递推送 */
@@ -45,22 +45,14 @@ export class SchedulerService {
 
       if (!settings.waterReminderTimes.includes(hhmm)) continue;
 
-      const dedupeKey = `${user.id}|${dateKey}|${hhmm}`;
-      if (this.sentWaterKeys.has(dedupeKey)) continue;
-
       if (isWithinQuietHours(hhmm, settings.quietStart, settings.quietEnd)) continue;
 
       // 已达标就不再打扰（提醒要附带价值，而非纯打扰）
       const summary = await this.waterService.summary(user.id, dateKey);
       if (summary.hydrationMl >= summary.goalMl) continue;
 
-      this.sentWaterKeys.add(dedupeKey);
-      // 只剪枝过期的旧日期键：clear() 会把同一分钟内已推送的键全部抹掉，引发一轮重复推送
-      if (this.sentWaterKeys.size > 10_000) {
-        for (const key of this.sentWaterKeys) {
-          if (!key.includes(`|${dateKey}|`)) this.sentWaterKeys.delete(key);
-        }
-      }
+      // Redis 原子占位，多实例 / 重启后同一时刻仍只推一次；放在检查之后避免无效占键
+      if (!(await this.waterDedupe.claim(user.id, dateKey, hhmm))) continue;
 
       const body = `${summary.hydrationMl}/${summary.goalMl}ml，还差 ${summary.remainingMl}ml。${WATER_TIPS[Math.floor(Math.random() * WATER_TIPS.length)]}`;
       await this.notifications
