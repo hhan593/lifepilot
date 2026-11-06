@@ -2,6 +2,10 @@
 # 打一个「局域网直连」APK：API 地址指向当前 Mac 的局域网 IP。
 # 用法：Mac 上先启动 API（pnpm --filter @lifepilot/api start 或 pnpm dev:api），
 #       手机与本机连同一 Wi-Fi，运行本脚本，然后把产物 APK 传到手机安装。
+# 签名前提（一次性）：~/.gradle/gradle.properties 里加两行——
+#   LIFEPILOT_UPLOAD_STORE_PASSWORD=<keystore 密码>
+#   LIFEPILOT_UPLOAD_KEY_PASSWORD=<key 密码>
+# （本地 keystore 在 android/app/lifepilot-release.keystore，密码见生成记录）
 set -euo pipefail
 cd "$(dirname "$0")"
 

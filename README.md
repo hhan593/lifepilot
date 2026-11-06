@@ -60,6 +60,7 @@ release 打包前会强制校验 keystore 与两个密码，缺任一即构建�
 ```bash
 pnpm --filter @lifepilot/api start          # 先保证 Mac 上 API 在跑
 ./apps/mobile/build-lan-apk.sh              # 自动取本机局域网 IP 打 APK
+# 首次使用前把签名密码写进 ~/.gradle/gradle.properties（LIFEPILOT_UPLOAD_*，见脚本注释）
 ```
 
 产物 APK 传到手机安装（允许"未知来源"）。手机与 Mac 同一 Wi-Fi 即可登录使用；
