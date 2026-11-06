@@ -328,7 +328,8 @@ function ReportDetailView({
       {r.highlights.length > 0 && (
         <View className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-xs">
           <View className="flex-row items-center gap-2 mb-2.5">
-            <Text className="text-base font-bold text-zinc-900">🌟 本周高光时刻</Text>
+            <Text className="text-base">🌟</Text>
+            <Text className="text-base font-bold text-zinc-900">本周高光时刻</Text>
           </View>
           <View className="gap-2">
             {r.highlights.map((h, i) => (
@@ -347,7 +348,8 @@ function ReportDetailView({
       {r.suggestions && r.suggestions.length > 0 && (
         <View className="rounded-3xl border border-indigo-100 bg-indigo-50/40 p-4 shadow-xs">
           <View className="flex-row items-center gap-2 mb-2.5">
-            <Text className="text-base font-bold text-indigo-950">💡 下周重点建议</Text>
+            <Text className="text-base">💡</Text>
+            <Text className="text-base font-bold text-indigo-950">下周重点建议</Text>
             <View className="rounded-full bg-indigo-200/60 px-2 py-0.5">
               <Text className="text-[10px] font-bold text-indigo-800">Smart Insights</Text>
             </View>
@@ -366,7 +368,8 @@ function ReportDetailView({
       <View className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-xs">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-2">
-            <Text className="text-base font-bold text-zinc-900">🎯 待办效率与成就</Text>
+            <Text className="text-base">🎯</Text>
+            <Text className="text-base font-bold text-zinc-900">待办效率与成就</Text>
           </View>
           <Text className="text-xs font-bold text-indigo-600">
             完成率 {r.todos.completionRate}%
@@ -426,7 +429,8 @@ function ReportDetailView({
       <View className="rounded-3xl border border-zinc-200/80 bg-white p-4 shadow-xs">
         <View className="flex-row items-center justify-between mb-3">
           <View className="flex-row items-center gap-2">
-            <Text className="text-base font-bold text-zinc-900">💧 水合与饮水节奏</Text>
+            <Text className="text-base">💧</Text>
+            <Text className="text-base font-bold text-zinc-900">水合与饮水节奏</Text>
           </View>
           <Text className="text-xs font-bold text-sky-600">
             日均 {r.water.avgMlPerDay.toLocaleString()}ml
