@@ -37,6 +37,12 @@ COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
 COPY --from=build /app/packages/shared ./packages/shared
 
+# workspace 符号链接（node_modules/@lifepilot/shared → packages/shared）
+# 在跨 stage COPY 后失效，替换为实体目录保证 require 可解析
+RUN rm -rf /app/node_modules/@lifepilot/shared \
+ && mkdir -p /app/node_modules/@lifepilot \
+ && cp -rL /app/packages/shared /app/node_modules/@lifepilot/shared
+
 RUN addgroup -S app && adduser -S app -G app && chown -R app:app /app
 USER app
 EXPOSE 4000
