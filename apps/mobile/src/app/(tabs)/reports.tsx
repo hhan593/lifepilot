@@ -379,10 +379,10 @@ function ReportDetailView({
         {/* 7日待办完成节奏柱状分布 */}
         <View className="mt-1 rounded-2xl bg-zinc-50 p-3 border border-zinc-100">
           <Text className="text-[11px] font-medium text-zinc-500 mb-2">周内每日任务完成节奏</Text>
-          <View className="h-20 flex-row items-end gap-2">
+          <View className="h-24 flex-row items-end gap-2">
             {r.todos.dailyCompleted.map((count, i) => {
               const maxCount = Math.max(...r.todos.dailyCompleted, 1);
-              const height = (count / maxCount) * 56 + 8;
+              const height = (count / maxCount) * 40 + 6;
               const isPeak = count > 0 && count === Math.max(...r.todos.dailyCompleted);
               return (
                 <View key={i} className="flex-1 items-center justify-end gap-1">
@@ -446,7 +446,7 @@ function ReportDetailView({
           <View className="h-24 flex-row items-end gap-2">
             {r.water.dailyMl.map((ml, i) => {
               const max = Math.max(...r.water.dailyMl, r.water.goalMl, 2000);
-              const height = max > 0 ? Math.max(6, (ml / max) * 64) : 6;
+              const height = max > 0 ? Math.max(6, (ml / max) * 56) : 6;
               const hit = ml >= r.water.goalMl && ml > 0;
               const isBest = i === r.water.bestDayIndex && ml > 0;
               return (
