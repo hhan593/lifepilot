@@ -112,17 +112,17 @@ export default function HabitsScreen() {
             })}
           </View>
 
-          {/* 每周目标选择器 */}
-          <View className="mt-3 flex-row items-center justify-between border-t border-zinc-100 pt-2.5">
+          {/* 每周目标选择器：标签独立一行，胶囊等宽排满，窄屏不挤压 */}
+          <View className="mt-3 border-t border-zinc-100 pt-2.5">
             <Text className="text-xs font-medium text-zinc-500">每周目标频次</Text>
-            <View className="flex-row gap-1">
+            <View className="mt-1.5 flex-row gap-1">
               {[1, 2, 3, 4, 5, 6, 7].map((n) => {
                 const active = target === n;
                 return (
                   <Pressable
                     key={n}
                     onPress={() => setTarget(n)}
-                    className={`rounded-lg px-2.5 py-1 ${
+                    className={`flex-1 items-center rounded-lg py-1 ${
                       active ? 'bg-zinc-900 shadow-2xs' : 'bg-zinc-100'
                     }`}
                   >
