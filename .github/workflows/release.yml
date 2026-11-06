@@ -53,6 +53,8 @@ jobs:
           # 签名密码不再有代码内默认值（#11），必须经 Secret 注入
           LIFEPILOT_UPLOAD_STORE_PASSWORD: ${{ secrets.LIFEPILOT_UPLOAD_STORE_PASSWORD }}
           LIFEPILOT_UPLOAD_KEY_PASSWORD: ${{ secrets.LIFEPILOT_UPLOAD_KEY_PASSWORD }}
+          # APK 内嵌的 API 地址：仓库 Variables 里配置 PUBLIC_API_BASE_URL（未设回退 localhost，仅模拟器/本地可用）
+          EXPO_PUBLIC_API_BASE: ${{ vars.PUBLIC_API_BASE_URL }}
         run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK to Release
