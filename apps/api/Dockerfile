@@ -9,12 +9,15 @@ RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/api/package.json apps/api/
-COPY packages/shared/package.json packages/shared/
-RUN pnpm install --frozen-lockfile
+# 拷完整 shared：pnpm install 会跑 workspace 包的 prepare（tsc -p tsconfig.json）
+COPY packages/shared ./packages/shared
+RUN pnpm install --frozen-lockfile --registry=${PNPM_REGISTRY}
 
 FROM deps AS build
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
+# 宿主机的增量编译状态会让 tsc 只 emit 与记录有差异的文件（dist 缺 main.js），构建前必须清掉
+RUN find /app -name "*.tsbuildinfo" -not -path "*/node_modules/*" -delete
 RUN pnpm --filter @lifepilot/shared build \
  && pnpm --filter @lifepilot/api exec prisma generate --schema prisma/schema.prisma \
  && pnpm --filter @lifepilot/api build

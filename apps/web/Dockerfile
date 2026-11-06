@@ -9,8 +9,9 @@ RUN corepack enable
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json apps/web/
-COPY packages/shared/package.json packages/shared/
-RUN pnpm install --frozen-lockfile
+# 拷完整 shared：pnpm install 会跑 workspace 包的 prepare（tsc -p tsconfig.json）
+COPY packages/shared ./packages/shared
+RUN pnpm install --frozen-lockfile --registry=${PNPM_REGISTRY}
 
 FROM deps AS build
 # rewrites 的 destination 在 next build 时固化，运行时再改 API_ORIGIN 无效
@@ -18,6 +19,8 @@ ARG API_ORIGIN=http://api:4000
 ENV API_ORIGIN=$API_ORIGIN
 COPY packages/shared ./packages/shared
 COPY apps/web ./apps/web
+# 宿主机的增量编译状态会让 tsc 只 emit 与记录有差异的文件，构建前必须清掉
+RUN find /app -name "*.tsbuildinfo" -not -path "*/node_modules/*" -delete
 RUN pnpm --filter @lifepilot/shared build && pnpm --filter @lifepilot/web build
 
 FROM ${BASE_IMAGE} AS runtime

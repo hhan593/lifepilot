@@ -55,6 +55,16 @@ release 打包前会强制校验 keystore 与两个密码，缺任一即构建�
 - H5 部署地址记得在 App 的 `.env`/服务端把 API 地址换成公网可达地址
 - iOS 正式包必须走 Apple Developer 账号（TestFlight/App Store），GitHub 无法绕过签名
 
+## 装到手机（局域网直连版，无需公网）
+
+```bash
+pnpm --filter @lifepilot/api start          # 先保证 Mac 上 API 在跑
+./apps/mobile/build-lan-apk.sh              # 自动取本机局域网 IP 打 APK
+```
+
+产物 APK 传到手机安装（允许"未知来源"）。手机与 Mac 同一 Wi-Fi 即可登录使用；
+**Mac 需保持开机且 API 在运行**。适合自用与演示；对外分发走下面的公网部署。
+
 ## 后端公网部署（让线上 H5 可用）
 
 仓库带 [Render](https://render.com) 一键蓝图（免费 Postgres + 免费 Redis + 免费额度 Web 服务，`render.yaml`）：
