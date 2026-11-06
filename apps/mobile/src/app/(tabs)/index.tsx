@@ -122,10 +122,10 @@ export default function TodayScreen() {
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
               <Text className="text-xl">🧭</Text>
-              <View>
-                <Text className="text-sm font-bold text-white">个人生活驾驶舱 · 周报</Text>
-                <Text className="text-xs text-zinc-400">
-                  {rep ? `生活活力指数 ${rep.score} 分 · ${rep.grade} 级 ${rep.title}` : '点击查看本周成长与习惯复盘'}
+              <View className="min-w-0 flex-1">
+                <Text numberOfLines={1} className="text-sm font-bold text-white">个人生活驾驶舱 · 周报</Text>
+                <Text numberOfLines={1} className="text-xs text-zinc-400">
+                  {rep ? `活力指数 ${rep.score} 分 · ${rep.grade} 级 ${rep.title}` : '点击查看本周成长与习惯复盘'}
                 </Text>
               </View>
             </View>
@@ -190,7 +190,7 @@ export default function TodayScreen() {
               <Text className="mt-1 text-sm text-zinc-500">
                 {w.remainingMl > 0 ? `还差 ${w.remainingMl.toLocaleString()}ml 达标` : '今日已达标，棒！🎉'}
               </Text>
-              <View className="mt-3 flex-row gap-2">
+              <View className="mt-3 flex-row flex-wrap gap-2">
                 <Pressable className="rounded-xl border border-zinc-200 px-3 py-1.5 active:opacity-70" onPress={() => quickWater.mutate(250)}>
                   <Text className="text-xs text-zinc-700">+250ml</Text>
                 </Pressable>

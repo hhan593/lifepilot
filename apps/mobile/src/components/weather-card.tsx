@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import type { CityWeather, WeatherIcon } from '@lifepilot/shared';
 
 const ICONS: Record<WeatherIcon, string> = {
@@ -51,16 +51,21 @@ export function WeatherCard({ data }: { data: CityWeather | null }) {
         </View>
       </View>
 
-      {/* 逐小时 */}
-      <View className="mt-4 flex-row gap-3">
-        {data.hourly.slice(0, 12).map((h) => (
+      {/* 逐小时：横向滑动，24 小时全量 */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        className="mt-4"
+        contentContainerStyle={{ gap: 12, paddingRight: 4 }}
+      >
+        {data.hourly.map((h) => (
           <View key={h.time} className="w-10 items-center gap-1">
             <Text className="text-xs text-zinc-400">{Number(h.time.slice(11, 13))}时</Text>
             <Text style={{ fontSize: 13 }}>{ICONS[h.icon] ?? '☁️'}</Text>
             <Text className="text-xs font-medium text-zinc-700">{h.temperature}°</Text>
           </View>
         ))}
-      </View>
+      </ScrollView>
 
       {/* 未来 5 日 */}
       <View className="mt-3 gap-1.5 border-t border-zinc-100 pt-3">
